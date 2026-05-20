@@ -1,0 +1,32 @@
+cd /Users/anudeep_gunna/Desktop/Project/PortfolioCMS
+
+cat > .gitignore << 'EOF'
+# Build output
+bin/
+obj/
+publish/
+
+# User-specific files
+*.user
+*.suo
+.vs/
+.idea/
+*.DS_Store
+
+# Secrets — never commit these
+appsettings.Development.json
+**/appsettings.Development.json
+
+# Blazor WASM dev server
+.sass-cache/
+
+# NuGet
+*.nupkg
+packages/
+
+# Docker volumes
+sqldata/
+
+# Uploads folder
+**/wwwroot/uploads/
+EOF

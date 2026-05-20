@@ -1,0 +1,26 @@
+@namespace PortfolioCMS.Web.Components.Public
+
+<div class="section-container" style="text-align:center">
+    <h2 class="section-title" style="color:var(--color-primary); font-family:var(--font-heading)">
+        @Section.Title
+    </h2>
+    <div class="contact-links">
+        @foreach (var line in Section.Content.Split('\n', StringSplitOptions.TrimEntries))
+        {
+            @if (line.StartsWith("http"))
+            {
+                <a href="@line" target="_blank" class="contact-link" style="color:var(--color-accent)">
+                    @line
+                </a>
+            }
+            else
+            {
+                <p class="contact-item">@line</p>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SectionDto Section { get; set; } = null!;
+}

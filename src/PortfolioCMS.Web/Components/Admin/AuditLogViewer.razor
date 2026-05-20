@@ -1,0 +1,81 @@
+@namespace PortfolioCMS.Web.Components.Admin
+@inject HttpClient Http
+@inject PortfolioApiService Api
+
+<div class="editor-panel">
+    <h2>Audit Log</h2>
+    <p class="editor-hint">Every admin change is recorded here — who did what and when.</p>
+
+    @if (_loading)
+    {
+        <p style="color:var(--admin-muted)">Loading…</p>
+    }
+    else if (_logs.Count == 0)
+    {
+        <p style="color:var(--admin-muted)">No audit log entries yet.</p>
+    }
+    else
+    {
+        <div class="audit-table-wrap">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Entity</th>
+                        <th>By</th>
+                        <th>When</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var log in _logs)
+                    {
+                        <tr>
+                            <td><span class="audit-action-badge">@log.Action</span></td>
+                            <td>@log.EntityName @(log.EntityId.HasValue ? $"#{log.EntityId}" : "")</td>
+                            <td>@log.PerformedBy</td>
+                            <td style="white-space:nowrap; color:var(--admin-muted)">
+                                @log.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display:flex; gap:0.75rem; margin-top:1rem; align-items:center">
+            <button class="btn-sm" @onclick="PrevPage" disabled="@(_page <= 1)">← Prev</button>
+            <span style="font-size:0.85rem; color:var(--admin-muted)">Page @_page</span>
+            <button class="btn-sm" @onclick="NextPage" disabled="@(_logs.Count < _pageSize)">Next →</button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<AuditLogEntry> _logs = [];
+    private bool _loading = true;
+    private int _page = 1;
+    private const int _pageSize = 20;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            // Use the auth header already set on the HttpClient by PortfolioApiService
+            var result = await Http.GetFromJsonAsync<List<AuditLogEntry>>(
+                $"/api/audit?page={_page}&pageSize={_pageSize}");
+            _logs = result ?? [];
+        }
+        catch { _logs = []; }
+        finally { _loading = false; }
+    }
+
+    private async Task PrevPage() { if (_page > 1) { _page--; await LoadAsync(); } }
+    private async Task NextPage() { _page++; await LoadAsync(); }
+
+    private record AuditLogEntry(int Id, string Action, string EntityName,
+        int? EntityId, string? OldValue, string? NewValue,
+        string PerformedBy, DateTime CreatedAt);
+}

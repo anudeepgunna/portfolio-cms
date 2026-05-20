@@ -1,0 +1,185 @@
+@namespace PortfolioCMS.Web.Components.Admin
+
+<div class="editor-panel">
+    <h2>Edit Sections</h2>
+    <p class="editor-hint">Click a section to expand and edit it. Changes save immediately.</p>
+
+    @foreach (var sec in Sections.OrderBy(s => s.DisplayOrder))
+    {
+        <div class="section-editor-card @(_editing?.Id == sec.Id ? "active" : "")">
+            <div class="section-card-header" @onclick="() => ToggleEdit(sec)">
+                <div>
+                    <span class="section-type-badge">@sec.Type</span>
+                    <span class="section-card-title">@sec.Title</span>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center">
+                    <span class="visibility-badge @(sec.IsVisible ? "visible" : "hidden")">
+                        @(sec.IsVisible ? "Visible" : "Hidden")
+                    </span>
+                    <span>@(_editing?.Id == sec.Id ? "▲" : "▼")</span>
+                </div>
+            </div>
+
+            @if (_editing?.Id == sec.Id)
+            {
+                <div class="section-editor-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input @bind="_editing.Title" />
+                        </div>
+                        <div class="form-group">
+                            <label>Subtitle</label>
+                            <input @bind="_editing.SubTitle" placeholder="Optional" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Content</label>
+                        <textarea @bind="_editing.Content" rows="5"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Background Color</label>
+                            <div class="color-input-row">
+                                <input type="color" @bind="_editing.BackgroundColor" />
+                                <input @bind="_editing.BackgroundColor" placeholder="#ffffff" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Text Color</label>
+                            <div class="color-input-row">
+                                <input type="color" @bind="_editing.TextColor" />
+                                <input @bind="_editing.TextColor" placeholder="#111111" />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Visible</label>
+                            <input type="checkbox" @bind="_editing.IsVisible" style="width:20px; height:20px" />
+                        </div>
+                    </div>
+
+                    <!-- AI improve button -->
+                    <div class="ai-row">
+                        <button class="btn-ai" @onclick="ImproveWithAI" disabled="@_aiLoading">
+                            @(_aiLoading ? "✨ Improving..." : "✨ Improve with AI")
+                        </button>
+                        @if (!string.IsNullOrEmpty(_aiSuggestion))
+                        {
+                            <div class="ai-suggestion">
+                                <p><strong>AI suggestion:</strong></p>
+                                <p>@_aiSuggestion</p>
+                                <div style="display:flex; gap:8px; margin-top:8px">
+                                    <button class="btn-sm btn-primary" @onclick="AcceptAiSuggestion">Accept</button>
+                                    <button class="btn-sm" @onclick="() => _aiSuggestion = null">Dismiss</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="editor-actions">
+                        <button class="btn-primary" @onclick="SaveAsync" disabled="@_saving">
+                            @(_saving ? "Saving..." : "Save Changes")
+                        </button>
+                        <button class="btn-outline" @onclick="() => _editing = null">Cancel</button>
+                        @if (!string.IsNullOrEmpty(_saveMessage))
+                        {
+                            <span class="save-message">@_saveMessage</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<SectionDto> Sections { get; set; } = [];
+    [Parameter, EditorRequired] public EventCallback OnSave { get; set; }
+    [Parameter, EditorRequired] public PortfolioApiService Api { get; set; } = null!;
+
+    private EditableSectionDto? _editing;
+    private bool _saving;
+    private bool _aiLoading;
+    private string? _aiSuggestion;
+    private string? _saveMessage;
+
+    private void ToggleEdit(SectionDto section)
+    {
+        _aiSuggestion = null;
+        _saveMessage = null;
+        _editing = _editing?.Id == section.Id
+            ? null
+            : new EditableSectionDto(section);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_editing is null) return;
+        _saving = true;
+        _saveMessage = null;
+
+        try
+        {
+            await Api.UpdateSectionAsync(_editing.Id, new
+            {
+                title = _editing.Title,
+                subTitle = _editing.SubTitle,
+                content = _editing.Content,
+                isVisible = _editing.IsVisible,
+                displayOrder = _editing.DisplayOrder,
+                backgroundColor = _editing.BackgroundColor,
+                textColor = _editing.TextColor
+            });
+            _saveMessage = "✅ Saved!";
+            await OnSave.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _saveMessage = $"❌ Error: {ex.Message}";
+        }
+        finally { _saving = false; }
+    }
+
+    private async Task ImproveWithAI()
+    {
+        if (_editing is null) return;
+        _aiLoading = true;
+        _aiSuggestion = null;
+
+        _aiSuggestion = await Api.ImproveTextAsync(_editing.Content,
+            $"Portfolio {_editing.Type} section");
+
+        _aiLoading = false;
+    }
+
+    private void AcceptAiSuggestion()
+    {
+        if (_editing is not null && _aiSuggestion is not null)
+            _editing.Content = _aiSuggestion;
+        _aiSuggestion = null;
+    }
+
+    // Mutable wrapper for editing
+    private class EditableSectionDto
+    {
+        public int Id { get; set; }
+        public string Type { get; set; }
+        public string Title { get; set; }
+        public string? SubTitle { get; set; }
+        public string Content { get; set; }
+        public bool IsVisible { get; set; }
+        public int DisplayOrder { get; set; }
+        public string BackgroundColor { get; set; }
+        public string TextColor { get; set; }
+
+        public EditableSectionDto(SectionDto s)
+        {
+            Id = s.Id; Type = s.Type; Title = s.Title;
+            SubTitle = s.SubTitle; Content = s.Content;
+            IsVisible = s.IsVisible; DisplayOrder = s.DisplayOrder;
+            BackgroundColor = s.BackgroundColor; TextColor = s.TextColor;
+        }
+    }
+}

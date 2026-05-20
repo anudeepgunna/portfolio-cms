@@ -1,0 +1,271 @@
+@namespace PortfolioCMS.Web.Components.Admin
+
+<div class="editor-panel">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
+        <div>
+            <h2>Projects</h2>
+            <p class="editor-hint">Manage your portfolio project cards.</p>
+        </div>
+        <button class="btn-primary" @onclick="() => _showNewForm = !_showNewForm">
+            @(_showNewForm ? "✕ Cancel" : "+ Add Project")
+        </button>
+    </div>
+
+    @if (_showNewForm)
+    {
+        <div class="new-project-form">
+            <h3>New Project</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Title *</label>
+                    <input @bind="_new.Title" placeholder="My Awesome Project" />
+                </div>
+                <div class="form-group">
+                    <label>Tech Stack * (comma separated)</label>
+                    <input @bind="_new.TechStack" placeholder="C#, .NET, Blazor" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Description *</label>
+                <textarea @bind="_new.Description" rows="3" placeholder="What does this project do?"></textarea>
+            </div>
+
+            <!-- AI generate description -->
+            <div class="ai-row">
+                <button class="btn-ai" @onclick="GenerateDescWithAI" disabled="@_aiLoading">
+                    @(_aiLoading ? "✨ Generating..." : "✨ Generate from README")
+                </button>
+                @if (_showReadmeInput)
+                {
+                    <div style="margin-top:0.75rem">
+                        <div class="form-group">
+                            <label>Paste your GitHub README content</label>
+                            <textarea @bind="_readmeContent" rows="5" placeholder="Paste README.md content here..."></textarea>
+                        </div>
+                        <button class="btn-sm btn-primary" @onclick="RunAiGenerate" disabled="@_aiLoading">Generate</button>
+                    </div>
+                }
+                else
+                {
+                    <button class="btn-sm" style="margin-left:8px" @onclick="() => _showReadmeInput = true">Paste README</button>
+                }
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>GitHub URL</label>
+                    <input @bind="_new.GitHubUrl" placeholder="https://github.com/..." />
+                </div>
+                <div class="form-group">
+                    <label>Live URL</label>
+                    <input @bind="_new.LiveUrl" placeholder="https://..." />
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Display Order</label>
+                <input type="number" @bind="_new.DisplayOrder" />
+            </div>
+            <div class="editor-actions">
+                <button class="btn-primary" @onclick="CreateProjectAsync" disabled="@_saving">
+                    @(_saving ? "Creating..." : "Create Project")
+                </button>
+                @if (!string.IsNullOrEmpty(_message))
+                {
+                    <span class="save-message">@_message</span>
+                }
+            </div>
+        </div>
+    }
+
+    @foreach (var project in Projects.OrderBy(p => p.DisplayOrder))
+    {
+        <div class="project-editor-card">
+            <div class="project-editor-header">
+                <div>
+                    <h4>@project.Title</h4>
+                    <small style="color:var(--admin-muted); font-size:0.78rem">@project.TechStack</small>
+                </div>
+                <div class="project-actions">
+                    <span class="visibility-badge @(project.IsVisible ? "visible" : "hidden")">
+                        @(project.IsVisible ? "Visible" : "Hidden")
+                    </span>
+                    <button class="btn-sm" @onclick="() => ToggleEdit(project)">
+                        @(_editingId == project.Id ? "Close" : "Edit")
+                    </button>
+                    <button class="btn-sm btn-danger" @onclick="() => DeleteAsync(project.Id)">Delete</button>
+                </div>
+            </div>
+
+            @if (_editingId == project.Id && _editProject is not null)
+            {
+                <div style="margin-top:1rem; border-top:1px solid var(--admin-border); padding-top:1rem">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input @bind="_editProject.Title" />
+                        </div>
+                        <div class="form-group">
+                            <label>Tech Stack</label>
+                            <input @bind="_editProject.TechStack" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea @bind="_editProject.Description" rows="4"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>GitHub URL</label>
+                            <input @bind="_editProject.GitHubUrl" />
+                        </div>
+                        <div class="form-group">
+                            <label>Live URL</label>
+                            <input @bind="_editProject.LiveUrl" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Image URL</label>
+                            <input @bind="_editProject.ImageUrl" placeholder="https://..." />
+                        </div>
+                        <div class="form-group">
+                            <label>Display Order</label>
+                            <input type="number" @bind="_editProject.DisplayOrder" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Visible</label>
+                        <input type="checkbox" @bind="_editProject.IsVisible" style="width:20px;height:20px" />
+                    </div>
+                    <div class="editor-actions">
+                        <button class="btn-primary" @onclick="SaveEditAsync" disabled="@_saving">
+                            @(_saving ? "Saving..." : "Save Changes")
+                        </button>
+                        <button class="btn-sm" @onclick="() => _editingId = null">Cancel</button>
+                        @if (!string.IsNullOrEmpty(_message))
+                        {
+                            <span class="save-message">@_message</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public List<ProjectDto> Projects { get; set; } = [];
+    [Parameter, EditorRequired] public EventCallback OnSave { get; set; }
+    [Parameter, EditorRequired] public PortfolioApiService Api { get; set; } = null!;
+
+    private bool _showNewForm;
+    private bool _saving;
+    private bool _aiLoading;
+    private bool _showReadmeInput;
+    private string? _message;
+    private int? _editingId;
+    private string _readmeContent = "";
+
+    private NewProjectModel _new = new();
+    private EditProjectModel? _editProject;
+
+    private void ToggleEdit(ProjectDto p)
+    {
+        _message = null;
+        if (_editingId == p.Id) { _editingId = null; _editProject = null; return; }
+        _editingId = p.Id;
+        _editProject = new EditProjectModel(p);
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_new.Title)) { _message = "Title is required"; return; }
+        _saving = true; _message = null;
+        try
+        {
+            await Api.CreateProjectAsync(new
+            {
+                title = _new.Title, description = _new.Description,
+                techStack = _new.TechStack, gitHubUrl = _new.GitHubUrl,
+                liveUrl = _new.LiveUrl, displayOrder = _new.DisplayOrder
+            });
+            _new = new(); _showNewForm = false; _showReadmeInput = false;
+            _message = "✅ Created!";
+            await OnSave.InvokeAsync();
+        }
+        catch (Exception ex) { _message = $"❌ {ex.Message}"; }
+        finally { _saving = false; }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editProject is null) return;
+        _saving = true; _message = null;
+        try
+        {
+            await Api.UpdateProjectAsync(_editProject.Id, new
+            {
+                title = _editProject.Title, description = _editProject.Description,
+                techStack = _editProject.TechStack, gitHubUrl = _editProject.GitHubUrl,
+                liveUrl = _editProject.LiveUrl, imageUrl = _editProject.ImageUrl,
+                displayOrder = _editProject.DisplayOrder, isVisible = _editProject.IsVisible
+            });
+            _editingId = null; _message = "✅ Saved!";
+            await OnSave.InvokeAsync();
+        }
+        catch (Exception ex) { _message = $"❌ {ex.Message}"; }
+        finally { _saving = false; }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        try { await Api.DeleteProjectAsync(id); await OnSave.InvokeAsync(); }
+        catch (Exception ex) { _message = $"❌ {ex.Message}"; }
+    }
+
+    private void GenerateDescWithAI() => _showReadmeInput = !_showReadmeInput;
+
+    private async Task RunAiGenerate()
+    {
+        if (string.IsNullOrWhiteSpace(_readmeContent)) return;
+        _aiLoading = true;
+        var result = await Api.GenerateProjectDescAsync(_readmeContent, _new.Title);
+        if (result is not null)
+        {
+            _new.Description = result.Description;
+            _new.TechStack = result.TechStack;
+        }
+        _aiLoading = false; _showReadmeInput = false;
+    }
+
+    private class NewProjectModel
+    {
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string TechStack { get; set; } = "";
+        public string? GitHubUrl { get; set; }
+        public string? LiveUrl { get; set; }
+        public int DisplayOrder { get; set; } = 1;
+    }
+
+    private class EditProjectModel
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string TechStack { get; set; }
+        public string? GitHubUrl { get; set; }
+        public string? LiveUrl { get; set; }
+        public string? ImageUrl { get; set; }
+        public int DisplayOrder { get; set; }
+        public bool IsVisible { get; set; }
+
+        public EditProjectModel(ProjectDto p)
+        {
+            Id = p.Id; Title = p.Title; Description = p.Description;
+            TechStack = p.TechStack; GitHubUrl = p.GitHubUrl;
+            LiveUrl = p.LiveUrl; ImageUrl = p.ImageUrl;
+            DisplayOrder = p.DisplayOrder; IsVisible = p.IsVisible;
+        }
+    }
+}

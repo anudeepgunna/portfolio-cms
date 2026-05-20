@@ -1,0 +1,51 @@
+@namespace PortfolioCMS.Web.Components.Public
+
+<div class="section-container">
+    <h2 class="section-title" style="color:var(--color-primary); font-family:var(--font-heading)">
+        @Section.Title
+    </h2>
+    @if (!string.IsNullOrEmpty(Section.SubTitle))
+    {
+        <p class="section-subtitle">@Section.SubTitle</p>
+    }
+
+    <div class="projects-grid">
+        @foreach (var project in Projects.Where(p => p.IsVisible).OrderBy(p => p.DisplayOrder))
+        {
+            <div class="project-card" style="background:var(--color-surface)">
+                @if (!string.IsNullOrEmpty(project.ImageUrl))
+                {
+                    <img src="@project.ImageUrl" alt="@project.Title" class="project-img" />
+                }
+                <div class="project-body">
+                    <h3 class="project-title" style="color:var(--color-primary)">@project.Title</h3>
+                    <p class="project-desc">@project.Description</p>
+                    <div class="project-tags">
+                        @foreach (var tag in project.TechStack.Split(',', StringSplitOptions.TrimEntries))
+                        {
+                            <span class="tech-tag" style="background:var(--color-bg); color:var(--color-accent)">
+                                @tag
+                            </span>
+                        }
+                    </div>
+                    <div class="project-links">
+                        @if (!string.IsNullOrEmpty(project.GitHubUrl))
+                        {
+                            <a href="@project.GitHubUrl" target="_blank" class="project-link">GitHub →</a>
+                        }
+                        @if (!string.IsNullOrEmpty(project.LiveUrl))
+                        {
+                            <a href="@project.LiveUrl" target="_blank" class="project-link"
+                               style="color:var(--color-accent)">Live Demo →</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SectionDto Section { get; set; } = null!;
+    [Parameter, EditorRequired] public List<ProjectDto> Projects { get; set; } = [];
+}
