@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace PortfolioCMS.Infrastructure.Persistence.Migrations
+namespace PortfolioCMS.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration

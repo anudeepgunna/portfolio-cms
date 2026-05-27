@@ -7,7 +7,7 @@ using PortfolioCMS.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace PortfolioCMS.Infrastructure.Persistence.Migrations
+namespace PortfolioCMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
     partial class AppDbContextModelSnapshot : ModelSnapshot

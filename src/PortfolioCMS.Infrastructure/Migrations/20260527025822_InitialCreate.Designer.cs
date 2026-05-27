@@ -8,10 +8,10 @@ using PortfolioCMS.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace PortfolioCMS.Infrastructure.Persistence.Migrations
+namespace PortfolioCMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260519184052_InitialCreate")]
+    [Migration("20260527025822_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
