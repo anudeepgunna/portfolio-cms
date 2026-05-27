@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using PortfolioCMS.Application.Common.Interfaces;
-
 using PortfolioCMS.Infrastructure.Persistence;
 using PortfolioCMS.Infrastructure.Services;
 using System.Text;
@@ -17,8 +16,12 @@ public static class InfrastructureServiceRegistration
         this IServiceCollection services, IConfiguration config)
     {
         // ── Database ──────────────────────────────────────────────────────────
+        // Handle Railway's DATABASE_URL format (postgresql://user:pass@host:port/db)
+        // AND standard Npgsql connection string format
+        var connectionString = BuildConnectionString(config);
+
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlite(config.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(connectionString));
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
@@ -81,5 +84,25 @@ public static class InfrastructureServiceRegistration
             .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 
         return services;
+    }
+
+    private static string BuildConnectionString(IConfiguration config)
+    {
+        // Priority 1: Railway DATABASE_URL environment variable (postgresql://... format)
+        var databaseUrl = config["DATABASE_URL"];
+        if (!string.IsNullOrEmpty(databaseUrl) && databaseUrl.StartsWith("postgresql://"))
+        {
+            var uri = new Uri(databaseUrl);
+            var userInfo = uri.UserInfo.Split(':');
+            return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        }
+
+        // Priority 2: Standard connection string from appsettings
+        var connStr = config.GetConnectionString("DefaultConnection");
+        if (!string.IsNullOrEmpty(connStr))
+            return connStr;
+
+        throw new InvalidOperationException(
+            "No database connection string found. Set DATABASE_URL or ConnectionStrings__DefaultConnection.");
     }
 }
