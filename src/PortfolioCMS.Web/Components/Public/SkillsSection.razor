@@ -1,0 +1,19 @@
+@namespace PortfolioCMS.Web.Components.Public
+
+<div class="section-container">
+    <h2 class="section-title" style="color:var(--color-primary); font-family:var(--font-heading)">
+        @Section.Title
+    </h2>
+    <div class="skills-grid">
+        @foreach (var skill in Section.Content.Split(',', StringSplitOptions.TrimEntries))
+        {
+            <span class="skill-tag" style="border-color:var(--color-accent); color:var(--color-accent)">
+                @skill
+            </span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SectionDto Section { get; set; } = null!;
+}

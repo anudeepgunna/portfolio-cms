@@ -1,0 +1,82 @@
+@page "/admin"
+@inject PortfolioApiService Api
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.SignalR.Client
+@using PortfolioCMS.Web.Components.Admin
+@using PortfolioCMS.Web.Components.Public
+
+<PageTitle>Admin — Portfolio CMS</PageTitle>
+
+@if (!Api.Auth.IsAdmin)
+{
+    Nav.NavigateTo("/admin/login");
+    return;
+}
+
+<div class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+        <div class="sidebar-header">
+            <span>⚡ Portfolio CMS</span>
+            <small>@Api.Auth.Username</small>
+        </div>
+        <nav class="sidebar-nav">
+            <button class="@NavClass("sections")" @onclick='() => _tab = "sections"'>Sections</button>
+            <button class="@NavClass("projects")" @onclick='() => _tab = "projects"'>Projects</button>
+            <button class="@NavClass("theme")" @onclick='() => _tab = "theme"'>Theme</button>
+            <button class="@NavClass("audit")" @onclick='() => _tab = "audit"'>Audit Log</button>
+        </nav>
+        <div class="sidebar-footer">
+            <a href="/" target="_blank" class="preview-link">View Live Site ↗</a>
+            <button @onclick="LogoutAsync" class="btn-danger-sm">Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main content area -->
+    <main class="admin-main">
+    @if (_tab == "sections")
+    {
+        <SectionsEditor Sections="_sections" OnSave="LoadDataAsync" Api="Api" />
+    }
+    else if (_tab == "projects")
+    {
+        <ProjectsEditor Projects="_projects" OnSave="LoadDataAsync" Api="Api" />
+    }
+    else if (_tab == "theme")
+    {
+        <ThemeEditor Theme="_theme" OnSave="LoadDataAsync" Api="Api" />
+    }
+    else if (_tab == "audit")
+    {
+        <AuditLogViewer />
+    }
+</main>
+</div>
+
+@code {
+    private string _tab = "sections";
+    private List<SectionDto> _sections = [];
+    private List<ProjectDto> _projects = [];
+    private ThemeDto? _theme;
+
+    protected override async Task OnInitializedAsync()
+        => await LoadDataAsync();
+
+    private async Task LoadDataAsync()
+    {
+        _sections = await Api.GetSectionsAsync() ?? [];
+        _projects = await Api.GetProjectsAsync(visibleOnly: false) ?? [];
+        _theme = await Api.GetThemeAsync();
+        StateHasChanged();
+    }
+
+    private async Task LogoutAsync()
+    {
+        await Api.LogoutAsync();
+        Nav.NavigateTo("/admin/login");
+    }
+
+    private string NavClass(string tab)
+        => _tab == tab ? "nav-item active" : "nav-item";
+}

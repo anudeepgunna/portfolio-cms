@@ -1,0 +1,134 @@
+@page "/"
+@using PortfolioCMS.Web.Components.Public
+@inject PortfolioApiService Api
+@inject PortfolioHubService Hub
+@inject IConfiguration Config
+@implements IAsyncDisposable
+
+<PageTitle>@(_hero?.Title ?? "Portfolio")</PageTitle>
+
+@if (_loading)
+{
+    <div class="loading-screen">
+        <div class="loader"></div>
+    </div>
+}
+else
+{
+    @if (_theme is not null)
+    {
+        <style>
+            :root {
+                --color-primary: @_theme.PrimaryColor;
+                --color-secondary: @_theme.SecondaryColor;
+                --color-accent: @_theme.AccentColor;
+                --color-bg: @_theme.BackgroundColor;
+                --color-surface: @_theme.SurfaceColor;
+                --color-text: @_theme.TextColor;
+                --font-body: '@_theme.FontFamily', sans-serif;
+                --font-heading: '@_theme.HeadingFontFamily', sans-serif;
+            }
+        </style>
+    }
+
+    <div class="portfolio" style="background:var(--color-bg); color:var(--color-text); font-family:var(--font-body)">
+
+        <nav class="navbar">
+            <span class="nav-logo">
+                @(_hero?.Title?.Split(',').FirstOrDefault()?.Trim() ?? "Portfolio")
+            </span>
+
+            <div class="nav-links">
+                @foreach (var sec in _sections.Where(s => s.IsVisible))
+                {
+                    <a href="#@(sec.Type.ToLower())">@sec.Type</a>
+                }
+            </div>
+        </nav>
+
+        @foreach (var sec in _sections.Where(s => s.IsVisible).OrderBy(s => s.DisplayOrder))
+        {
+            <section id="@(sec.Type.ToLower())"
+                     style="background:@(sec.BackgroundColor); color:@(sec.TextColor)">
+
+                @switch (sec.Type)
+                {
+                    case "Hero":
+                        <HeroSection Section="sec" />
+                        break;
+
+                    case "About":
+                        <AboutSection Section="sec" />
+                        break;
+
+                    case "Skills":
+                        <SkillsSection Section="sec" />
+                        break;
+
+                    case "Projects":
+                        <ProjectsSection Projects="_projects" Section="sec" />
+                        break;
+
+                    case "Contact":
+                        <ContactSection Section="sec" />
+                        break;
+                }
+
+            </section>
+        }
+
+    </div>
+}
+
+@code {
+    private List<SectionDto> _sections = [];
+    private List<ProjectDto> _projects = [];
+    private ThemeDto? _theme;
+    private SectionDto? _hero;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sections = await Api.GetSectionsAsync() ?? [];
+        _projects = await Api.GetProjectsAsync(true) ?? [];
+        _theme = await Api.GetThemeAsync();
+        _hero = _sections.FirstOrDefault(s => s.Type == "Hero");
+
+        _loading = false;
+
+        Hub.OnContentUpdated += HandleContentUpdated;
+        Hub.OnThemeUpdated += HandleThemeUpdated;
+
+        var apiBase = Config["ApiBaseUrl"] ?? "http://localhost:5000";
+
+        await Hub.StartAsync(apiBase);
+    }
+
+    private void HandleContentUpdated(string sectionType, object? _)
+    {
+        InvokeAsync(async () =>
+        {
+            _sections = await Api.GetSectionsAsync() ?? _sections;
+            _hero = _sections.FirstOrDefault(s => s.Type == "Hero");
+
+            StateHasChanged();
+        });
+    }
+
+    private void HandleThemeUpdated(ThemeDto? newTheme)
+    {
+        InvokeAsync(() =>
+        {
+            _theme = newTheme;
+            StateHasChanged();
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hub.OnContentUpdated -= HandleContentUpdated;
+        Hub.OnThemeUpdated -= HandleThemeUpdated;
+
+        await Hub.DisposeAsync();
+    }
+}

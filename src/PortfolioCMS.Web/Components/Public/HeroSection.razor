@@ -1,0 +1,19 @@
+@* ─── Hero Section ─────────────────────────────────────────────────────────── *@
+
+@namespace PortfolioCMS.Web.Components.Public
+<div class="hero-container">
+    <h1 class="hero-title" style="font-family:var(--font-heading)">@Section.Title</h1>
+    @if (!string.IsNullOrEmpty(Section.SubTitle))
+    {
+        <h2 class="hero-subtitle">@Section.SubTitle</h2>
+    }
+    <p class="hero-content">@Section.Content</p>
+    <div class="hero-actions">
+        <a href="#projects" class="btn-primary" style="background:var(--color-primary)">View Projects</a>
+        <a href="#contact" class="btn-outline">Get In Touch</a>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SectionDto Section { get; set; } = null!;
+}
