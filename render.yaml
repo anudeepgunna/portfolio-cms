@@ -1,0 +1,40 @@
+databases:
+  - name: portfolio-cms-db
+    databaseName: portfoliocms
+    user: portfoliocms
+    plan: free
+
+services:
+  - type: web
+    name: portfolio-cms-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # Supplied by the managed Postgres above; parsed by BuildConnectionString.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: portfolio-cms-db
+          property: connectionString
+
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+
+      # Signing key for JWTs. Generated once by Render and kept out of git.
+      - key: Jwt__Secret
+        generateValue: true
+      - key: Jwt__Issuer
+        value: PortfolioCMS
+      - key: Jwt__Audience
+        value: PortfolioCMS-Users
+
+      # Password for the admin account created on first boot. sync:false makes
+      # Render prompt for it at deploy time rather than storing it in git.
+      - key: Seed__AdminPassword
+        sync: false
+
+      # Comma-separated CORS origins. Set to the Netlify site URL once known.
+      - key: AllowedOrigins
+        sync: false

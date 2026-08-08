@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PortfolioCMS.Domain.Entities;
@@ -13,13 +14,14 @@ public static class DatabaseSeeder
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
+        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
         try
         {
             // Run pending migrations automatically on startup
             await db.Database.MigrateAsync();
 
-            await SeedUsersAsync(db);
+            await SeedUsersAsync(db, config);
             await SeedSectionsAsync(db);
             await SeedThemeAsync(db);
             await SeedProjectsAsync(db);
@@ -33,15 +35,23 @@ public static class DatabaseSeeder
         }
     }
 
-    private static async Task SeedUsersAsync(AppDbContext db)
+    private static async Task SeedUsersAsync(AppDbContext db, IConfiguration config)
     {
         if (await db.Users.AnyAsync()) return;
 
-        // Default admin — CHANGE THIS PASSWORD before deploying!
+        // The initial admin password must be supplied out-of-band via
+        // Seed__AdminPassword. Never fall back to a literal: this repo is public
+        // and the seeded account has full Admin rights on a public URL.
+        var password = config["Seed:AdminPassword"];
+        if (string.IsNullOrWhiteSpace(password))
+            throw new InvalidOperationException(
+                "Seed__AdminPassword is not set — refusing to create the admin account " +
+                "with a default password. Set it in the hosting environment and redeploy.");
+
         db.Users.Add(new AppUser
         {
-            Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456"),
+            Username = config["Seed:AdminUsername"] ?? "admin",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             Role = "Admin",
             CreatedAt = DateTime.UtcNow
         });

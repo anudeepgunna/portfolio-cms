@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using PortfolioCMS.API.Middleware;
 using PortfolioCMS.Application;
@@ -44,14 +45,16 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// CORS — allow Blazor WASM dev server and production domain
+// CORS — origins come from AllowedOrigins (comma-separated) so the Netlify
+// domain can be set per-environment without a code change.
+var allowedOrigins = (builder.Configuration["AllowedOrigins"] ?? "http://localhost:5001")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("BlazorPolicy", policy =>
     {
-        policy.WithOrigins(
-                builder.Configuration["AllowedOrigins"] ?? "http://localhost:5001",
-                "https://your-portfolio.azurestaticapps.net")
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();  // required for SignalR
@@ -73,7 +76,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Render terminates TLS at its edge proxy and forwards plain HTTP to the
+// container, so honour X-Forwarded-* to recover the caller's real scheme/IP.
+// HTTPS is enforced at that edge; redirecting again in-container would loop.
+var forwardedHeaders = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+forwardedHeaders.KnownNetworks.Clear();   // the proxy is not on a loopback network
+forwardedHeaders.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeaders);
+
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
 app.UseCors("BlazorPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -192,37 +208,12 @@ ai.MapPost("/generate-project-desc", async (GenerateProjectDescRequest req,
     return Results.Ok(await m.Send(new GenerateProjectDescCommand(req)));
 }).RequireAuthorization("AdminOnly");
 
-// TEMPORARY RESET — delete after fixing
-app.MapPost("/api/dev/reset-admin", async (IAppDbContext db) =>
-{
-    var existing = await db.Users.FirstOrDefaultAsync(u => u.Username == "admin");
-    if (existing != null)
-    {
-        existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456");
-        existing.Role = "Admin";
-    }
-    else
-    {
-        db.Users.Add(new PortfolioCMS.Domain.Entities.AppUser
-        {
-            Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456"),
-            Role = "Admin",
-            CreatedAt = DateTime.UtcNow
-        });
-    }
-    await db.SaveChangesAsync();
-    return Results.Ok("✅ Admin reset successfully");
-}).AllowAnonymous();
+// ── Health check ──────────────────────────────────────────────────────────────
+// Render polls this to decide whether a deploy came up successfully.
 
-// TEMPORARY — check users table
-app.MapGet("/api/dev/check-users", async (IAppDbContext db) =>
-{
-    var users = await db.Users
-        .Select(u => new { u.Username, u.Role, u.CreatedAt })
-        .ToListAsync();
-    return Results.Ok(users);
-}).AllowAnonymous();
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
+    .AllowAnonymous()
+    .WithTags("Health");
 // ── Audit Log ─────────────────────────────────────────────────────────────────
 
 // app.MapGet("/api/audit", async (IAppDbContext db, int page = 1, int pageSize = 20) =>

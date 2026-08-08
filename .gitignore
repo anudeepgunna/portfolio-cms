@@ -18,6 +18,23 @@ out/
 build/
 dist/
 
+# .NET build output
+bin/
+obj/
+publish/
+netlify_build/
+*.user
+*.suo
+.vs/
+
+# Secrets — never commit these
+appsettings.Development.json
+**/appsettings.Development.json
+
+# Docker volumes / uploads
+sqldata/
+**/wwwroot/uploads/
+
 # Misc
 *.log
 npm-debug.log*

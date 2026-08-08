@@ -29,7 +29,8 @@ RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
 USER appuser
 
 EXPOSE 8080
-ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-ENTRYPOINT ["dotnet", "PortfolioCMS.API.dll"]
+# Render/Railway inject the listen port via $PORT. Bind to it at runtime and
+# fall back to 8080 for local `docker run` and docker-compose.
+ENTRYPOINT ["sh", "-c", "ASPNETCORE_URLS=http://+:${PORT:-8080} exec dotnet PortfolioCMS.API.dll"]

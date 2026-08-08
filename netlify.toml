@@ -1,7 +1,32 @@
 [build]
-  publish = "Main/src"
-  command = ""
+  publish = "netlify_build/wwwroot"
+  # Netlify's build image has no .NET SDK, so install it, publish the Blazor
+  # WebAssembly frontend, and point it at the Render API via API_BASE_URL
+  # (set under Site settings > Environment variables).
+  command = '''
+set -e
 
+if [ -z "$API_BASE_URL" ]; then
+  echo "ERROR: API_BASE_URL is not set."
+  echo "Set it in Netlify > Site settings > Environment variables to the Render"
+  echo "API URL, e.g. https://portfolio-cms-api.onrender.com"
+  exit 1
+fi
+
+curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+bash /tmp/dotnet-install.sh --channel 9.0 --install-dir "$HOME/.dotnet"
+export PATH="$HOME/.dotnet:$PATH"
+
+dotnet publish src/PortfolioCMS.Web/PortfolioCMS.Web.csproj -c Release -o netlify_build
+
+# Overwrite the dev-time API URL baked into the published config, and drop the
+# now-stale precompressed copies alongside it.
+printf '{"ApiBaseUrl":"%s"}' "$API_BASE_URL" > netlify_build/wwwroot/appsettings.json
+rm -f netlify_build/wwwroot/appsettings.json.br netlify_build/wwwroot/appsettings.json.gz
+'''
+
+# Blazor is a SPA: serve index.html for client-side routes. Netlify serves real
+# files first, so /_framework/* assets are unaffected.
 [[redirects]]
   from = "/*"
   to = "/index.html"
