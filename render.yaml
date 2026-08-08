@@ -35,6 +35,6 @@ services:
       - key: Seed__AdminPassword
         sync: false
 
-      # Comma-separated CORS origins. Set to the Netlify site URL once known.
+      # Comma-separated CORS origins — the Netlify site that serves the frontend.
       - key: AllowedOrigins
-        sync: false
+        value: https://anudeep-portfolio-cms.netlify.app
