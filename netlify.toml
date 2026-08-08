@@ -1,6 +1,7 @@
 [build]
   publish = "Main/src"
-  command = ""
+  command = "echo 'Site is pre-built'"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF"
 
 [[redirects]]
   from = "/*"
@@ -12,3 +13,13 @@
 
 [context.deploy-preview]
   environment = { NODE_ENV = "production" }
+
+# Ignore unnecessary files
+[ignore]
+  - tests/
+  - docs/
+  - .git/
+  - *.sln
+  - *.csproj
+  - Dockerfile
+  - docker-compose.yml
