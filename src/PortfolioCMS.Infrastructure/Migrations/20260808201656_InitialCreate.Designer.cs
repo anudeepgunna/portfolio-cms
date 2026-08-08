@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PortfolioCMS.Infrastructure.Persistence;
 
 #nullable disable
@@ -11,49 +12,55 @@ using PortfolioCMS.Infrastructure.Persistence;
 namespace PortfolioCMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260527025822_InitialCreate")]
+    [Migration("20260808201656_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "9.0.1")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("PortfolioCMS.Domain.Entities.AppUser", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("RefreshToken")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("RefreshTokenExpiry")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(20)")
                         .HasDefaultValue("Viewer");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
 
@@ -67,28 +74,30 @@ namespace PortfolioCMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Action")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("EntityId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<string>("EntityName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("IpAddress")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("NewValue")
                         .HasColumnType("TEXT");
@@ -99,10 +108,10 @@ namespace PortfolioCMS.Infrastructure.Migrations
                     b.Property<string>("PerformedBy")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -115,13 +124,15 @@ namespace PortfolioCMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("BackgroundColor")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(7)")
                         .HasDefaultValue("#ffffff");
 
                     b.Property<string>("Content")
@@ -129,35 +140,35 @@ namespace PortfolioCMS.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsVisible")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("SubTitle")
                         .HasMaxLength(300)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("TextColor")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(7)")
                         .HasDefaultValue("#111111");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -171,45 +182,47 @@ namespace PortfolioCMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
 
                     b.Property<string>("GitHubUrl")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<bool>("IsVisible")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("LiveUrl")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("TechStack")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -220,69 +233,71 @@ namespace PortfolioCMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AccentColor")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(7)")
                         .HasDefaultValue("#06b6d4");
 
                     b.Property<string>("BackgroundColor")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(7)")
                         .HasDefaultValue("#0f172a");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("FontFamily")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(100)")
                         .HasDefaultValue("Inter");
 
                     b.Property<string>("HeadingFontFamily")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(100)")
                         .HasDefaultValue("Inter");
 
                     b.Property<string>("PrimaryColor")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(7)")
                         .HasDefaultValue("#6366f1");
 
                     b.Property<string>("SecondaryColor")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(7)")
                         .HasDefaultValue("#8b5cf6");
 
                     b.Property<string>("SurfaceColor")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(7)")
                         .HasDefaultValue("#1e293b");
 
                     b.Property<string>("TextColor")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT")
+                        .HasColumnType("character varying(7)")
                         .HasDefaultValue("#f8fafc");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
