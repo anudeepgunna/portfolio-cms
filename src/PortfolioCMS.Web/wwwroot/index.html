@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Portfolio</title>
 
+    <!-- Must precede every relative URL below: <base> only applies to elements
+         that follow it, so a stylesheet linked above it would resolve against
+         the current path and 404 on nested routes like /admin/login. -->
+    <base href="/" />
+
     <!-- Google Fonts — Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,9 +17,6 @@
 
     <!-- App stylesheet -->
     <link rel="stylesheet" href="app.css" />
-
-    <!-- Blazor WebAssembly bootstrap -->
-    <base href="/" />
 </head>
 <body>
 
