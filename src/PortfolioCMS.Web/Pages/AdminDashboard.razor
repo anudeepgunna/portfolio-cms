@@ -34,7 +34,9 @@
             <button class="@NavClass("audit")" @onclick='() => _tab = "audit"'>Audit Log</button>
         </nav>
         <div class="sidebar-footer">
-            <a href="/" target="_blank" class="preview-link">View Live Site ↗</a>
+            <!-- Must be the signed-in user's own portfolio. "/" is the site
+                 owner's page, which for everyone else is somebody else's. -->
+            <a href="@PublicPath" target="_blank" class="preview-link">View Live Site ↗</a>
             <button @onclick="LogoutAsync" class="btn-danger-sm">Logout</button>
         </div>
     </aside>
