@@ -12,7 +12,7 @@ namespace PortfolioCMS.Application.Features.Projects;
 // QUERIES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-public record GetAllProjectsQuery(bool VisibleOnly = false) : IRequest<List<ProjectDto>>;
+public record GetAllProjectsQuery(int OwnerId, bool VisibleOnly = false) : IRequest<List<ProjectDto>>;
 
 public sealed class GetAllProjectsHandler : IRequestHandler<GetAllProjectsQuery, List<ProjectDto>>
 {
@@ -21,7 +21,7 @@ public sealed class GetAllProjectsHandler : IRequestHandler<GetAllProjectsQuery,
 
     public async Task<List<ProjectDto>> Handle(GetAllProjectsQuery request, CancellationToken ct)
     {
-        var query = _db.Projects.AsQueryable();
+        var query = _db.Projects.Where(p => p.OwnerId == request.OwnerId);
         if (request.VisibleOnly) query = query.Where(p => p.IsVisible);
 
         return await query
@@ -57,14 +57,20 @@ public sealed class CreateProjectHandler : IRequestHandler<CreateProjectCommand,
 {
     private readonly IAppDbContext _db;
     private readonly IAuditService _audit;
+    private readonly ICurrentUserService _currentUser;
 
-    public CreateProjectHandler(IAppDbContext db, IAuditService audit) { _db = db; _audit = audit; }
+    public CreateProjectHandler(IAppDbContext db, IAuditService audit, ICurrentUserService currentUser)
+    { _db = db; _audit = audit; _currentUser = currentUser; }
 
     public async Task<ProjectDto> Handle(CreateProjectCommand request, CancellationToken ct)
     {
+        var ownerId = _currentUser.UserId
+            ?? throw new UnauthorizedAccessException("Not signed in");
+
         var p = request.Payload;
         var project = new ProjectCard
         {
+            OwnerId = ownerId,
             Title = p.Title,
             Description = p.Description,
             TechStack = p.TechStack,
@@ -100,12 +106,19 @@ public sealed class UpdateProjectHandler : IRequestHandler<UpdateProjectCommand,
 {
     private readonly IAppDbContext _db;
     private readonly IAuditService _audit;
+    private readonly ICurrentUserService _currentUser;
 
-    public UpdateProjectHandler(IAppDbContext db, IAuditService audit) { _db = db; _audit = audit; }
+    public UpdateProjectHandler(IAppDbContext db, IAuditService audit, ICurrentUserService currentUser)
+    { _db = db; _audit = audit; _currentUser = currentUser; }
 
     public async Task<ProjectDto> Handle(UpdateProjectCommand request, CancellationToken ct)
     {
-        var project = await _db.Projects.FindAsync([request.ProjectId], ct)
+        var ownerId = _currentUser.UserId
+            ?? throw new UnauthorizedAccessException("Not signed in");
+
+        // Scoped by OwnerId so a guessed id cannot reach another user's project.
+        var project = await _db.Projects.FirstOrDefaultAsync(
+                x => x.Id == request.ProjectId && x.OwnerId == ownerId, ct)
             ?? throw new KeyNotFoundException($"Project {request.ProjectId} not found");
 
         var old = JsonSerializer.Serialize(project);
@@ -136,12 +149,18 @@ public sealed class DeleteProjectHandler : IRequestHandler<DeleteProjectCommand,
 {
     private readonly IAppDbContext _db;
     private readonly IAuditService _audit;
+    private readonly ICurrentUserService _currentUser;
 
-    public DeleteProjectHandler(IAppDbContext db, IAuditService audit) { _db = db; _audit = audit; }
+    public DeleteProjectHandler(IAppDbContext db, IAuditService audit, ICurrentUserService currentUser)
+    { _db = db; _audit = audit; _currentUser = currentUser; }
 
     public async Task<bool> Handle(DeleteProjectCommand request, CancellationToken ct)
     {
-        var project = await _db.Projects.FindAsync([request.ProjectId], ct)
+        var ownerId = _currentUser.UserId
+            ?? throw new UnauthorizedAccessException("Not signed in");
+
+        var project = await _db.Projects.FirstOrDefaultAsync(
+                x => x.Id == request.ProjectId && x.OwnerId == ownerId, ct)
             ?? throw new KeyNotFoundException($"Project {request.ProjectId} not found");
 
         var old = JsonSerializer.Serialize(project);

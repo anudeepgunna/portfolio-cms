@@ -21,6 +21,12 @@
             <span>⚡ Portfolio CMS</span>
             <small>@Api.Auth.Username</small>
         </div>
+
+        <!-- The user's public link, so sharing never requires guessing the URL. -->
+        <div class="sidebar-share">
+            <small>Your public portfolio</small>
+            <a href="@PublicUrl" target="_blank" rel="noopener">@PublicPath</a>
+        </div>
         <nav class="sidebar-nav">
             <button class="@NavClass("sections")" @onclick='() => _tab = "sections"'>Sections</button>
             <button class="@NavClass("projects")" @onclick='() => _tab = "projects"'>Projects</button>
@@ -79,4 +85,8 @@
 
     private string NavClass(string tab)
         => _tab == tab ? "nav-item active" : "nav-item";
+
+    private string PublicPath => $"/p/{Api.Auth.Username}";
+
+    private string PublicUrl => $"{Nav.BaseUri.TrimEnd('/')}{PublicPath}";
 }

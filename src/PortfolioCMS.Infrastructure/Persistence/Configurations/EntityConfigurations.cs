@@ -15,7 +15,15 @@ public class SectionConfiguration : IEntityTypeConfiguration<PortfolioSection>
         builder.Property(x => x.BackgroundColor).HasMaxLength(7).HasDefaultValue("#ffffff");
         builder.Property(x => x.TextColor).HasMaxLength(7).HasDefaultValue("#111111");
         builder.Property(x => x.Type).IsRequired();
-        builder.HasIndex(x => x.Type).IsUnique();  // one row per section type
+
+        // One row per section type *per user*. A bare unique index on Type would
+        // let the first user to create a Hero block every other user from having one.
+        builder.HasIndex(x => new { x.OwnerId, x.Type }).IsUnique();
+
+        builder.HasOne(x => x.Owner)
+            .WithMany(u => u.Sections)
+            .HasForeignKey(x => x.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -30,6 +38,13 @@ public class ProjectConfiguration : IEntityTypeConfiguration<ProjectCard>
         builder.Property(x => x.GitHubUrl).HasMaxLength(500);
         builder.Property(x => x.LiveUrl).HasMaxLength(500);
         builder.Property(x => x.ImageUrl).HasMaxLength(1000);
+
+        builder.HasIndex(x => x.OwnerId);
+
+        builder.HasOne(x => x.Owner)
+            .WithMany(u => u.Projects)
+            .HasForeignKey(x => x.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 
@@ -46,6 +61,14 @@ public class ThemeConfiguration : IEntityTypeConfiguration<ThemeSettings>
         builder.Property(x => x.TextColor).HasMaxLength(7).HasDefaultValue("#f8fafc");
         builder.Property(x => x.FontFamily).HasMaxLength(100).HasDefaultValue("Inter");
         builder.Property(x => x.HeadingFontFamily).HasMaxLength(100).HasDefaultValue("Inter");
+
+        // Exactly one theme per user.
+        builder.HasIndex(x => x.OwnerId).IsUnique();
+
+        builder.HasOne(x => x.Owner)
+            .WithMany()
+            .HasForeignKey(x => x.OwnerId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

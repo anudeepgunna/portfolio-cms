@@ -15,6 +15,7 @@ using PortfolioCMS.Infrastructure.Persistence.Seeders;
 using Microsoft.SemanticKernel.Services;
 using Microsoft.EntityFrameworkCore;
 using PortfolioCMS.Application.Features.Auth;
+using PortfolioCMS.Application.Features.Portfolios;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,63 +114,105 @@ auth.MapPost("/refresh", async (RefreshTokenRequest req, IMediator m) =>
     Results.Ok(await m.Send(new RefreshTokenCommand(req))))
     .AllowAnonymous();
 
+auth.MapPost("/register", async (RegisterRequest req, IMediator m) =>
+    Results.Ok(await m.Send(new RegisterCommand(req))))
+    .AllowAnonymous();
+
+// ── Public portfolios (anonymous read) ────────────────────────────────────────
+// One request returns theme + sections + projects for a single user, so a
+// shared link renders without a waterfall of calls.
+
+var portfolios = app.MapGroup("/api/portfolios").WithTags("Portfolios");
+
+// The site owner's portfolio — what the root URL renders.
+portfolios.MapGet("/", async (IMediator m) =>
+{
+    var result = await m.Send(new GetPublicPortfolioQuery(string.Empty));
+    return result is null ? Results.NotFound() : Results.Ok(result);
+}).AllowAnonymous();
+
+portfolios.MapGet("/{username}", async (string username, IMediator m) =>
+{
+    var result = await m.Send(new GetPublicPortfolioQuery(username));
+    return result is null ? Results.NotFound() : Results.Ok(result);
+}).AllowAnonymous();
+
+// ── The signed-in user's own portfolio (includes hidden items) ────────────────
+
+app.MapGet("/api/me/portfolio", async (IMediator m, ICurrentUserService me) =>
+{
+    if (me.UserId is null) return Results.Unauthorized();
+
+    var sections = await m.Send(new GetAllSectionsQuery(me.UserId.Value));
+    var projects = await m.Send(new GetAllProjectsQuery(me.UserId.Value, false));
+    var theme    = await m.Send(new GetThemeQuery(me.UserId.Value));
+
+    return Results.Ok(new PublicPortfolioDto(me.Username ?? "", theme, sections, projects));
+}).RequireAuthorization().WithTags("Me");
+
 // ── Sections (public read / admin write) ──────────────────────────────────────
 
 var sections = app.MapGroup("/api/sections").WithTags("Sections");
 
-sections.MapGet("/", async (IMediator m) =>
-    Results.Ok(await m.Send(new GetAllSectionsQuery())))
-    .AllowAnonymous();
+sections.MapGet("/", async (IMediator m, ICurrentUserService me) =>
+    me.UserId is null
+        ? Results.Unauthorized()
+        : Results.Ok(await m.Send(new GetAllSectionsQuery(me.UserId.Value))))
+    .RequireAuthorization();
 
-sections.MapGet("/{type}", async (string type, IMediator m) =>
+sections.MapGet("/{type}", async (string type, IMediator m, ICurrentUserService me) =>
 {
-    var result = await m.Send(new GetSectionByTypeQuery(type));
+    if (me.UserId is null) return Results.Unauthorized();
+    var result = await m.Send(new GetSectionByTypeQuery(me.UserId.Value, type));
     return result is null ? Results.NotFound() : Results.Ok(result);
-}).AllowAnonymous();
+}).RequireAuthorization();
 
 sections.MapPut("/{id:int}", async (int id, UpdateSectionRequest req, IMediator m) =>
     Results.Ok(await m.Send(new UpdateSectionCommand(id, req))))
-    .RequireAuthorization("AdminOnly");
+    .RequireAuthorization();
 
 sections.MapPost("/reorder", async ([FromBody] List<ReorderItem> items, IMediator m) =>
 {
     var orders = items.Select(i => (i.Id, i.Order)).ToList();
     return Results.Ok(await m.Send(new ReorderSectionsCommand(orders)));
-}).RequireAuthorization("AdminOnly");
+}).RequireAuthorization();
 
 // ── Projects (public read / admin write) ──────────────────────────────────────
 
 var projects = app.MapGroup("/api/projects").WithTags("Projects");
 
-projects.MapGet("/", async (IMediator m, bool visibleOnly = true) =>
-    Results.Ok(await m.Send(new GetAllProjectsQuery(visibleOnly))))
-    .AllowAnonymous();
+projects.MapGet("/", async (IMediator m, ICurrentUserService me, bool visibleOnly = false) =>
+    me.UserId is null
+        ? Results.Unauthorized()
+        : Results.Ok(await m.Send(new GetAllProjectsQuery(me.UserId.Value, visibleOnly))))
+    .RequireAuthorization();
 
 projects.MapPost("/", async (CreateProjectRequest req, IMediator m) =>
     Results.Created("/api/projects", await m.Send(new CreateProjectCommand(req))))
-    .RequireAuthorization("AdminOnly");
+    .RequireAuthorization();
 
 projects.MapPut("/{id:int}", async (int id, UpdateProjectRequest req, IMediator m) =>
     Results.Ok(await m.Send(new UpdateProjectCommand(id, req))))
-    .RequireAuthorization("AdminOnly");
+    .RequireAuthorization();
 
 projects.MapDelete("/{id:int}", async (int id, IMediator m) =>
     Results.Ok(await m.Send(new DeleteProjectCommand(id))))
-    .RequireAuthorization("AdminOnly");
+    .RequireAuthorization();
 
 // ── Theme (public read / admin write) ─────────────────────────────────────────
 
 var theme = app.MapGroup("/api/theme").WithTags("Theme");
 
-theme.MapGet("/", async (IMediator m) =>
+theme.MapGet("/", async (IMediator m, ICurrentUserService me) =>
 {
-    var t = await m.Send(new GetThemeQuery());
+    if (me.UserId is null) return Results.Unauthorized();
+    var t = await m.Send(new GetThemeQuery(me.UserId.Value));
     return t is null ? Results.NotFound() : Results.Ok(t);
-}).AllowAnonymous();
+}).RequireAuthorization();
 
 theme.MapPut("/", async (UpdateThemeRequest req, IMediator m) =>
     Results.Ok(await m.Send(new UpdateThemeCommand(req))))
-    .RequireAuthorization("AdminOnly");
+    .RequireAuthorization();
 
 // ── Image Upload ──────────────────────────────────────────────────────────────
 
@@ -189,7 +232,7 @@ images.MapPost("/upload", async (IFormFile file, IImageStorageService storage,
     var url = await storage.UploadAsync(stream, file.FileName, file.ContentType, ct);
 
     return Results.Ok(new ImageUploadResponse(url, file.FileName, file.Length));
-}).RequireAuthorization("AdminOnly").DisableAntiforgery();
+}).RequireAuthorization().DisableAntiforgery();
 
 // ── AI Endpoints ──────────────────────────────────────────────────────────────
 
@@ -199,14 +242,14 @@ ai.MapPost("/improve-text", async (ImproveTextRequest req, IMediator m, IAiServi
 {
     if (aiService is null) return Results.StatusCode(503);  // AI not configured
     return Results.Ok(await m.Send(new ImproveTextCommand(req)));
-}).RequireAuthorization("AdminOnly");
+}).RequireAuthorization();
 
 ai.MapPost("/generate-project-desc", async (GenerateProjectDescRequest req,
     IMediator m, IAiService? aiService) =>
 {
     if (aiService is null) return Results.StatusCode(503);
     return Results.Ok(await m.Send(new GenerateProjectDescCommand(req)));
-}).RequireAuthorization("AdminOnly");
+}).RequireAuthorization();
 
 // ── Health check ──────────────────────────────────────────────────────────────
 // Render polls this to decide whether a deploy came up successfully.
@@ -226,7 +269,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
 //             l.OldValue, l.NewValue, l.PerformedBy, l.CreatedAt))
 //         .ToListAsync();
 //     return Results.Ok(logs);
-// }).RequireAuthorization("AdminOnly").WithTags("Audit");
+// }).RequireAuthorization().WithTags("Audit");
 
 app.Run();
 

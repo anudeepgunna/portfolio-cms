@@ -31,6 +31,10 @@ public interface ICurrentUserService
     string? Username { get; }
     string? IpAddress { get; }
     bool IsAdmin { get; }
+
+    /// <summary>Id of the signed-in user, or null when anonymous. Every write
+    /// scopes to this so a caller can only ever touch their own portfolio.</summary>
+    int? UserId { get; }
 }
 
 // ─── Audit service ────────────────────────────────────────────────────────────

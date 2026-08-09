@@ -10,16 +10,16 @@ namespace PortfolioCMS.Application.Features.Theme;
 
 // ─── Get theme ────────────────────────────────────────────────────────────────
 
-public record GetThemeQuery() : IRequest<ThemeDto?>;
+public record GetThemeQuery(int OwnerId) : IRequest<ThemeDto?>;
 
 public sealed class GetThemeHandler : IRequestHandler<GetThemeQuery, ThemeDto?>
 {
     private readonly IAppDbContext _db;
     public GetThemeHandler(IAppDbContext db) => _db = db;
 
-    public async Task<ThemeDto?> Handle(GetThemeQuery _, CancellationToken ct)
+    public async Task<ThemeDto?> Handle(GetThemeQuery request, CancellationToken ct)
     {
-        var t = await _db.Themes.FirstOrDefaultAsync(ct);
+        var t = await _db.Themes.FirstOrDefaultAsync(x => x.OwnerId == request.OwnerId, ct);
         return t is null ? null : MapToDto(t);
     }
 
@@ -55,14 +55,19 @@ public sealed class UpdateThemeHandler : IRequestHandler<UpdateThemeCommand, The
     private readonly IAppDbContext _db;
     private readonly IAuditService _audit;
     private readonly IPortfolioNotificationService _notify;
+    private readonly ICurrentUserService _currentUser;
 
-    public UpdateThemeHandler(IAppDbContext db, IAuditService audit, IPortfolioNotificationService notify)
-    { _db = db; _audit = audit; _notify = notify; }
+    public UpdateThemeHandler(IAppDbContext db, IAuditService audit,
+        IPortfolioNotificationService notify, ICurrentUserService currentUser)
+    { _db = db; _audit = audit; _notify = notify; _currentUser = currentUser; }
 
     public async Task<ThemeDto> Handle(UpdateThemeCommand request, CancellationToken ct)
     {
-        var theme = await _db.Themes.FirstOrDefaultAsync(ct)
-            ?? throw new InvalidOperationException("Theme not seeded");
+        var ownerId = _currentUser.UserId
+            ?? throw new UnauthorizedAccessException("Not signed in");
+
+        var theme = await _db.Themes.FirstOrDefaultAsync(x => x.OwnerId == ownerId, ct)
+            ?? throw new InvalidOperationException("Theme not provisioned for this account");
 
         var old = JsonSerializer.Serialize(theme);
         var p = request.Payload;

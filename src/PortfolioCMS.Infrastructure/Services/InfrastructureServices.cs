@@ -96,6 +96,20 @@ public sealed class CurrentUserService : ICurrentUserService
 
     public bool IsAdmin =>
         _http.HttpContext?.User?.IsInRole("Admin") ?? false;
+
+    // The token carries the id as "sub". ASP.NET's default inbound claim mapping
+    // rewrites that to NameIdentifier, so accept either spelling.
+    public int? UserId
+    {
+        get
+        {
+            var user = _http.HttpContext?.User;
+            var raw = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                   ?? user?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+            return int.TryParse(raw, out var id) ? id : null;
+        }
+    }
 }
 
 // ─── Audit Service ────────────────────────────────────────────────────────────

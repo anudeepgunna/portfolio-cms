@@ -8,6 +8,11 @@ namespace PortfolioCMS.Domain.Entities;
 
 public class PortfolioSection : BaseEntity
 {
+    // The user whose portfolio this section belongs to. Every content row is
+    // owned; queries must filter on it or one user would see another's page.
+    public int OwnerId { get; set; }
+    public AppUser? Owner { get; set; }
+
     public SectionType Type { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;   // rich text / markdown
@@ -23,6 +28,9 @@ public class PortfolioSection : BaseEntity
 
 public class ProjectCard : BaseEntity
 {
+    public int OwnerId { get; set; }
+    public AppUser? Owner { get; set; }
+
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string TechStack { get; set; } = string.Empty;  // comma-separated tags
@@ -34,10 +42,13 @@ public class ProjectCard : BaseEntity
 }
 
 // ─── Theme Settings ───────────────────────────────────────────────────────────
-// Single-row table that stores the active color/font theme
+// One row per user — the colour/font theme for that user's portfolio
 
 public class ThemeSettings : BaseEntity
 {
+    public int OwnerId { get; set; }
+    public AppUser? Owner { get; set; }
+
     public string PrimaryColor { get; set; } = "#6366f1";
     public string SecondaryColor { get; set; } = "#8b5cf6";
     public string AccentColor { get; set; } = "#06b6d4";
@@ -63,7 +74,7 @@ public class AuditLog : BaseEntity
 }
 
 // ─── Application User ─────────────────────────────────────────────────────────
-// Minimal user — only admin credentials needed (no registration flow)
+// Each user owns exactly one portfolio, published at /p/{Username}.
 
 public class AppUser : BaseEntity
 {
@@ -72,4 +83,8 @@ public class AppUser : BaseEntity
     public string Role { get; set; } = "Viewer";               // "Admin" | "Viewer"
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiry { get; set; }
+
+    // Owned content. Cascade-deleted with the user.
+    public ICollection<PortfolioSection> Sections { get; set; } = new List<PortfolioSection>();
+    public ICollection<ProjectCard> Projects { get; set; } = new List<ProjectCard>();
 }

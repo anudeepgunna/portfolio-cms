@@ -30,6 +30,10 @@ public record ThemeDto(int Id, string PrimaryColor, string SecondaryColor, strin
 
 public record AuthResponse(string AccessToken, string RefreshToken, string Username, string Role);
 
+/// <summary>Theme + sections + projects for one user, fetched in a single call.</summary>
+public record PublicPortfolioDto(string Username, ThemeDto? Theme,
+    List<SectionDto> Sections, List<ProjectDto> Projects);
+
 public record ImproveTextResponse(string OriginalText, string ImprovedText);
 
 public record GenerateProjectDescResponse(string Description, string TechStack);
@@ -116,6 +120,73 @@ public class PortfolioApiService
     private void SetAuthHeader(string token)
         => _http.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", token);
+
+    // ── Registration ──────────────────────────────────────────────────────────
+
+    /// <summary>Creates an account and signs straight in. Returns null plus an
+    /// error message when the username is taken, reserved, or invalid.</summary>
+    public async Task<(bool ok, string? error)> RegisterAsync(string username, string password)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/auth/register", new { username, password });
+
+        if (!resp.IsSuccessStatusCode)
+            return (false, await ReadProblemAsync(resp));
+
+        var result = await resp.Content.ReadFromJsonAsync<AuthResponse>();
+        if (result is null) return (false, "Registration failed");
+
+        await PersistAuth(result);
+        return (true, null);
+    }
+
+    /// <summary>Pulls the human-readable message out of an RFC7807 problem
+    /// response so the form can show why the server said no.</summary>
+    private static async Task<string> ReadProblemAsync(HttpResponseMessage resp)
+    {
+        try
+        {
+            var problem = await resp.Content.ReadFromJsonAsync<JsonElement>();
+
+            foreach (var key in new[] { "detail", "title" })
+                if (problem.TryGetProperty(key, out var v) && v.GetString() is { Length: > 0 } msg)
+                    return msg;
+
+            if (problem.TryGetProperty("errors", out var errors)
+                && errors.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var field in errors.EnumerateObject())
+                    foreach (var m in field.Value.EnumerateArray())
+                        return m.GetString() ?? "Registration failed";
+            }
+        }
+        catch { /* not a problem document — fall through */ }
+
+        return $"Registration failed ({(int)resp.StatusCode})";
+    }
+
+    // ── Public portfolios ─────────────────────────────────────────────────────
+
+    /// <summary>Anonymous read of any user's published portfolio.</summary>
+    public async Task<PublicPortfolioDto?> GetPublicPortfolioAsync(string? username = null)
+    {
+        var url = string.IsNullOrWhiteSpace(username)
+            ? "/api/portfolios/"
+            : $"/api/portfolios/{Uri.EscapeDataString(username)}";
+
+        var resp = await _http.GetAsync(url);
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<PublicPortfolioDto>()
+            : null;
+    }
+
+    /// <summary>The signed-in user's own portfolio, including hidden items.</summary>
+    public async Task<PublicPortfolioDto?> GetMyPortfolioAsync()
+    {
+        var resp = await _http.GetAsync("/api/me/portfolio");
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<PublicPortfolioDto>()
+            : null;
+    }
 
     // ── Sections ──────────────────────────────────────────────────────────────
 

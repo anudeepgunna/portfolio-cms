@@ -1,0 +1,105 @@
+@page "/register"
+@inject PortfolioApiService Api
+@inject NavigationManager Nav
+
+<PageTitle>Create your portfolio</PageTitle>
+
+<div class="login-page">
+    <div class="login-card">
+        <h1>Create your portfolio</h1>
+        <p class="login-hint">
+            Pick a username — it becomes your public link.
+        </p>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" @bind="_username" @bind:event="oninput"
+                   @onkeydown="HandleKeyDown" placeholder="yourname" />
+            @if (!string.IsNullOrWhiteSpace(_username))
+            {
+                <p class="login-hint" style="margin-top:.4rem">
+                    Your portfolio: <strong>@PreviewUrl</strong>
+                </p>
+            }
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" @bind="_password" @onkeydown="HandleKeyDown"
+                   placeholder="At least 8 characters" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <p class="login-error">@_error</p>
+        }
+
+        <button class="btn-primary" @onclick="RegisterAsync" disabled="@_loading"
+                style="width:100%; margin-top:1rem">
+            @(_loading ? "Creating..." : "Create portfolio")
+        </button>
+
+        <p class="login-hint" style="margin-top:1rem; text-align:center">
+            Already have an account? <a href="/admin/login">Sign in</a>
+        </p>
+    </div>
+</div>
+
+@code {
+    private string _username = "";
+    private string _password = "";
+    private string _error = "";
+    private bool _loading = false;
+
+    // Shown live under the username box so the shareable link is obvious
+    // before the account is even created.
+    private string PreviewUrl =>
+        $"{Nav.BaseUri.TrimEnd('/')}/p/{_username.Trim()}";
+
+    protected override void OnInitialized()
+    {
+        if (Api.Auth.IsAuthenticated)
+            Nav.NavigateTo("/admin");
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await RegisterAsync();
+    }
+
+    private async Task RegisterAsync()
+    {
+        _error = "";
+
+        // Mirror the server's rules so the common mistakes are caught without
+        // a round trip; the API remains the authority.
+        var username = _username.Trim();
+
+        if (username.Length < 3)
+        {
+            _error = "Username must be at least 3 characters.";
+            return;
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(username, "^[a-zA-Z0-9_-]+$"))
+        {
+            _error = "Username may only contain letters, numbers, hyphens and underscores.";
+            return;
+        }
+
+        if (_password.Length < 8)
+        {
+            _error = "Password must be at least 8 characters.";
+            return;
+        }
+
+        _loading = true;
+        var (ok, error) = await Api.RegisterAsync(username, _password);
+        _loading = false;
+
+        if (ok)
+            Nav.NavigateTo("/admin");
+        else
+            _error = error ?? "Registration failed.";
+    }
+}

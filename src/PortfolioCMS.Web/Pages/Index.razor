@@ -1,4 +1,5 @@
 @page "/"
+@page "/p/{Username}"
 @using PortfolioCMS.Web.Components.Public
 @inject PortfolioApiService Api
 @inject PortfolioHubService Hub
@@ -11,6 +12,14 @@
 {
     <div class="loading-screen">
         <div class="loader"></div>
+    </div>
+}
+else if (_notFound)
+{
+    <div class="loading-screen" style="flex-direction:column; gap:1rem">
+        <h1 style="margin:0">Portfolio not found</h1>
+        <p style="opacity:.7">No portfolio exists at <strong>/p/@Username</strong>.</p>
+        <a class="btn-primary" href="/register">Create your own</a>
     </div>
 }
 else
@@ -87,29 +96,67 @@ else
     private SectionDto? _hero;
     private bool _loading = true;
 
-    protected override async Task OnInitializedAsync()
+    /// <summary>Username from /p/{Username}. Null on "/", which renders the
+    /// site owner's portfolio.</summary>
+    [Parameter] public string? Username { get; set; }
+
+    private bool _notFound;
+
+    // OnParametersSetAsync rather than OnInitializedAsync: navigating from
+    // /p/alice to /p/bob reuses this component instance, and initialisation
+    // would not run a second time.
+    protected override async Task OnParametersSetAsync()
     {
-        _sections = await Api.GetSectionsAsync() ?? [];
-        _projects = await Api.GetProjectsAsync(true) ?? [];
-        _theme = await Api.GetThemeAsync();
+        await LoadAsync();
+
+        if (!_hubStarted)
+        {
+            Hub.OnContentUpdated += HandleContentUpdated;
+            Hub.OnThemeUpdated += HandleThemeUpdated;
+
+            var apiBase = Config["ApiBaseUrl"] ?? "http://localhost:5000";
+            await Hub.StartAsync(apiBase);
+
+            _hubStarted = true;
+        }
+    }
+
+    private bool _hubStarted;
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _notFound = false;
+
+        var portfolio = await Api.GetPublicPortfolioAsync(Username);
+
+        if (portfolio is null)
+        {
+            _notFound = true;
+            _loading = false;
+            return;
+        }
+
+        _sections = portfolio.Sections;
+        _projects = portfolio.Projects;
+        _theme = portfolio.Theme;
         _hero = _sections.FirstOrDefault(s => s.Type == "Hero");
 
         _loading = false;
-
-        Hub.OnContentUpdated += HandleContentUpdated;
-        Hub.OnThemeUpdated += HandleThemeUpdated;
-
-        var apiBase = Config["ApiBaseUrl"] ?? "http://localhost:5000";
-
-        await Hub.StartAsync(apiBase);
     }
 
     private void HandleContentUpdated(string sectionType, object? _)
     {
         InvokeAsync(async () =>
         {
-            _sections = await Api.GetSectionsAsync() ?? _sections;
-            _hero = _sections.FirstOrDefault(s => s.Type == "Hero");
+            var portfolio = await Api.GetPublicPortfolioAsync(Username);
+
+            if (portfolio is not null)
+            {
+                _sections = portfolio.Sections;
+                _projects = portfolio.Projects;
+                _hero = _sections.FirstOrDefault(s => s.Type == "Hero");
+            }
 
             StateHasChanged();
         });

@@ -569,3 +569,27 @@ section { padding: 5rem 0; }
     .navbar { padding: 0.75rem 1.25rem; }
     .nav-links { gap: 1rem; }
 }
+
+/* ── Share link in the admin sidebar ──────────────────────────────────────── */
+.sidebar-share {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.sidebar-share small {
+    opacity: .6;
+    font-size: .75rem;
+}
+
+.sidebar-share a {
+    color: var(--color-accent, #06b6d4);
+    font-size: .85rem;
+    text-decoration: none;
+    /* Long usernames must not widen the fixed sidebar. */
+    overflow-wrap: anywhere;
+}
+
+.sidebar-share a:hover { text-decoration: underline; }

@@ -4,9 +4,21 @@ namespace PortfolioCMS.Application.DTOs;
 
 public record LoginRequest(string Username, string Password);
 
+public record RegisterRequest(string Username, string Password);
+
 public record AuthResponse(string AccessToken, string RefreshToken, string Username, string Role);
 
 public record RefreshTokenRequest(string RefreshToken);
+
+// ─── Portfolio ────────────────────────────────────────────────────────────────
+
+/// <summary>Everything the public page needs for one user, in a single round trip.</summary>
+public record PublicPortfolioDto(
+    string Username,
+    ThemeDto? Theme,
+    List<SectionDto> Sections,
+    List<ProjectDto> Projects
+);
 
 // ─── Section ──────────────────────────────────────────────────────────────────
 
