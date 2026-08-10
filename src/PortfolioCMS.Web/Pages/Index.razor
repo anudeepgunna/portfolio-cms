@@ -50,7 +50,7 @@ else
             <div class="nav-links">
                 @foreach (var sec in _sections.Where(s => s.IsVisible))
                 {
-                    <a href="#@(sec.Type.ToLower())">@sec.Type</a>
+                    <a href="@PagePath#@(sec.Type.ToLower())">@sec.Type</a>
                 }
             </div>
         </nav>
@@ -63,7 +63,7 @@ else
                 @switch (sec.Type)
                 {
                     case "Hero":
-                        <HeroSection Section="sec" />
+                        <HeroSection Section="sec" PagePath="@PagePath" />
                         break;
 
                     case "About":
@@ -102,6 +102,17 @@ else
 
     private bool _notFound;
 
+    /// <summary>Absolute path of the page currently being rendered. In-page
+    /// anchors must be prefixed with it: &lt;base href="/"&gt; makes a bare
+    /// "#skills" resolve to "/#skills", which navigates away to the site
+    /// owner's portfolio instead of scrolling down this one.</summary>
+    private string PagePath =>
+        string.IsNullOrWhiteSpace(Username) ? "/" : $"/p/{Username}";
+
+    // Which username the loaded content belongs to, so anchor navigation
+    // (same route, different fragment) does not refetch and flash the loader.
+    private string? _loadedFor;
+
     // OnParametersSetAsync rather than OnInitializedAsync: navigating from
     // /p/alice to /p/bob reuses this component instance, and initialisation
     // would not run a second time.
@@ -125,10 +136,16 @@ else
 
     private async Task LoadAsync()
     {
+        var key = Username ?? "";
+
+        // Same portfolio as last render — only the fragment changed.
+        if (_loadedFor == key) return;
+
         _loading = true;
         _notFound = false;
 
         var portfolio = await Api.GetPublicPortfolioAsync(Username);
+        _loadedFor = key;
 
         if (portfolio is null)
         {

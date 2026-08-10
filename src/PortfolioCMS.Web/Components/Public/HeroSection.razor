@@ -9,11 +9,16 @@
     }
     <p class="hero-content">@Section.Content</p>
     <div class="hero-actions">
-        <a href="#projects" class="btn-primary" style="background:var(--color-primary)">View Projects</a>
-        <a href="#contact" class="btn-outline">Get In Touch</a>
+        <a href="@PagePath#projects" class="btn-primary" style="background:var(--color-primary)">View Projects</a>
+        <a href="@PagePath#contact" class="btn-outline">Get In Touch</a>
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired] public SectionDto Section { get; set; } = null!;
+
+    /// <summary>Path of the page these anchors live on, e.g. "/p/alice".
+    /// A bare "#contact" would resolve against &lt;base href="/"&gt; and jump to
+    /// the site owner's page instead of staying here.</summary>
+    [Parameter] public string PagePath { get; set; } = "";
 }
