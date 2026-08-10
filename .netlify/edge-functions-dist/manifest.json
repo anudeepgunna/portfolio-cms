@@ -1,0 +1,1 @@
+{"bundles":[{"asset":"6a33c89b3e7be5459831343c42fb3486056470e6b00127ff09c69c47e14f632a.eszip","format":"eszip2"}],"routes":[{"function":"portfolio-meta","pattern":"^/p(?:/(.*))/?$","excluded_patterns":[],"path":"/p/*"}],"post_cache_routes":[],"bundler_version":"16.0.1","layers":[],"import_map":"netlify:import-map","function_config":{}}

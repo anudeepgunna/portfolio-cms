@@ -1,6 +1,8 @@
 @page "/explore"
 @inject PortfolioApiService Api
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@using Microsoft.JSInterop
 
 <PageTitle>Explore portfolios</PageTitle>
 
@@ -62,5 +64,14 @@
     {
         _portfolios = await Api.GetExploreAsync() ?? [];
         _loading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_loading) return;
+
+        // Binds the reveal and tilt observers to the cards just rendered.
+        try { await JS.InvokeVoidAsync("portfolioFx.refresh"); }
+        catch (JSException) { }
     }
 }

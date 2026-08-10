@@ -659,7 +659,10 @@ section { padding: 5rem 0; }
 }
 
 /* ── Scroll reveal ────────────────────────────────────────────────────────*/
-[data-reveal] {
+/* Scoped to .fx-ready, which portfolio-fx.js sets on <html> as it loads. The
+   hidden state must never apply when the module is absent, or a blocked script
+   leaves the page permanently blank. */
+.fx-ready [data-reveal] {
     opacity: 0;
     transform: translateY(26px);
     transition:
@@ -668,7 +671,7 @@ section { padding: 5rem 0; }
     will-change: opacity, transform;
 }
 
-[data-reveal].is-revealed {
+.fx-ready [data-reveal].is-revealed {
     opacity: 1;
     transform: none;
 }
@@ -868,6 +871,7 @@ section { padding: 5rem 0; }
 
 /* ── Honour the OS setting ────────────────────────────────────────────────*/
 @media (prefers-reduced-motion: reduce) {
+    .fx-ready [data-reveal],
     [data-reveal] {
         opacity: 1;
         transform: none;
@@ -1047,3 +1051,9 @@ section { padding: 5rem 0; }
 }
 
 .btn-copy.is-copied { color: var(--admin-success); border-color: var(--admin-success); }
+
+/* Blazor's <FocusOnNavigate Selector="h1"> moves focus to the page heading
+   after navigation so screen readers announce it. Chrome then paints its
+   default ring around the title. Suppress it for that programmatic focus only —
+   real keyboard focus still shows a ring through :focus-visible. */
+h1:focus:not(:focus-visible) { outline: none; }

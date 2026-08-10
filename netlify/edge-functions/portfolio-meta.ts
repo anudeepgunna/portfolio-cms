@@ -124,9 +124,13 @@ export default async function handler(request: Request, context: Context) {
 
   const html = await response.text();
 
-  // Drop the shell's placeholder <title> so crawlers do not see two.
+  // Strip the shell's generic card before injecting this portfolio's. Crawlers
+  // read the FIRST occurrence of a duplicated og: property, so leaving the
+  // site-wide tags in place would silently win over the per-user ones and every
+  // shared link would still preview identically.
   const rewritten = html
     .replace(/<title>[\s\S]*?<\/title>/i, '')
+    .replace(/[ \t]*<meta\s+(?:name|property)="(?:description|og:[^"]*|twitter:[^"]*)"[^>]*>\s*\n?/gi, '')
     .replace(/<\/head>/i, `${meta}\n</head>`);
 
   return new Response(rewritten, {

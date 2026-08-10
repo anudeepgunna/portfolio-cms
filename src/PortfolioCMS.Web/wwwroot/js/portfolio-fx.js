@@ -494,6 +494,33 @@ const portfolioFx = {
 /* Blazor boots on its own schedule and may call in before this module has
  * evaluated. index.html installs a stub that records those calls; replay them
  * now so the effects are never silently skipped. */
+// Tells the stylesheet it is safe to start reveal targets hidden.
+document.documentElement.classList.add('fx-ready');
+
+// Blazor swaps whole pages without a document load. Rather than requiring every
+// page to remember to call init, watch for reveal targets appearing and bind
+// them — the failure mode otherwise is invisible content, not just missing
+// animation.
+const rescan = (() => {
+  let pending = false;
+  return () => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      if (document.querySelector('[data-reveal]:not(.is-revealed)')) {
+        setupReveal();
+        setupTilt();
+      }
+    });
+  };
+})();
+
+new MutationObserver(rescan).observe(document.documentElement, {
+  childList: true,
+  subtree: true,
+});
+
 const queued = window.portfolioFx?._q ?? [];
 window.portfolioFx = portfolioFx;
 

@@ -37,4 +37,4 @@ services:
 
       # Comma-separated CORS origins — the Netlify site that serves the frontend.
       - key: AllowedOrigins
-        value: https://anudeep-portfolio-cms.netlify.app
+        value: https://foliobay.netlify.app
