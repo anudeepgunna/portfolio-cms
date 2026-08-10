@@ -5,9 +5,12 @@
         @Section.Title
     </h2>
     <div class="skills-grid">
+        @{ var skillIndex = 0; }
         @foreach (var skill in Section.Content.Split(',', StringSplitOptions.TrimEntries))
         {
-            <span class="skill-tag" style="border-color:var(--color-accent); color:var(--color-accent)">
+            <span class="skill-tag"
+                  data-reveal data-reveal-delay="@(skillIndex++ * 45)"
+                  style="border-color:var(--color-accent); color:var(--color-accent)">
                 @skill
             </span>
         }

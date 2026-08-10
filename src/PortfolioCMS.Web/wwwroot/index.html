@@ -17,6 +17,21 @@
 
     <!-- App stylesheet -->
     <link rel="stylesheet" href="app.css" />
+    <!-- Records effect calls made before portfolio-fx.js evaluates; the module
+         replays them on load. Blazor's boot time makes this unlikely, but a
+         lost init would silently disable every animation on the page. -->
+    <script>
+        window.portfolioFx = {
+            _q: [],
+            init() { this._q.push(['init', [...arguments]]); },
+            refresh() { this._q.push(['refresh', [...arguments]]); },
+            dispose() { this._q.push(['dispose', [...arguments]]); }
+        };
+    </script>
+
+    <!-- Visual effects: WebGL hero backdrop, scroll reveal, pointer tilt.
+         Purely additive — the page is complete without it. -->
+    <script type="module" src="js/portfolio-fx.js"></script>
 </head>
 <body>
 

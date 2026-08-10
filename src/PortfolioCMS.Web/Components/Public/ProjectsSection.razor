@@ -10,9 +10,12 @@
     }
 
     <div class="projects-grid">
+        @{ var cardIndex = 0; }
         @foreach (var project in Projects.Where(p => p.IsVisible).OrderBy(p => p.DisplayOrder))
         {
-            <div class="project-card" style="background:var(--color-surface)">
+            <div class="project-card" data-tilt="8"
+                 data-reveal data-reveal-delay="@(cardIndex++ * 90)"
+                 style="background:var(--color-surface)">
                 @if (!string.IsNullOrEmpty(project.ImageUrl))
                 {
                     <img src="@project.ImageUrl" alt="@project.Title" class="project-img" />

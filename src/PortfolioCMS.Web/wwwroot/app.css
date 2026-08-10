@@ -593,3 +593,311 @@ section { padding: 5rem 0; }
 }
 
 .sidebar-share a:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Motion & depth layer
+   Paired with wwwroot/js/portfolio-fx.js. Every effect below is additive:
+   without JS the page renders in its finished state, never blank.
+   ═════════════════════════════════════════════════════════════════════════*/
+
+/* ── Scroll progress ──────────────────────────────────────────────────────*/
+.fx-progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    width: 0;
+    z-index: 100;
+    background: linear-gradient(90deg,
+        var(--color-primary), var(--color-secondary), var(--color-accent));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 60%, transparent);
+    transition: width .12s linear;
+    pointer-events: none;
+}
+
+/* ── Hero WebGL backdrop ──────────────────────────────────────────────────*/
+.hero-stage {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+}
+
+.fx-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 0;
+    opacity: 0;
+    /* Fades in only once WebGL actually starts, so a failed load shows the
+       CSS gradient instead of a flash of empty canvas. */
+    transition: opacity 1.2s ease;
+}
+
+.fx-canvas.is-live { opacity: 1; }
+
+/* Depth behind the particles, and a vignette that keeps hero text readable
+   over whatever the scene is doing. */
+.hero-stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background:
+        radial-gradient(120% 90% at 50% 0%,
+            color-mix(in srgb, var(--color-primary) 22%, transparent) 0%,
+            transparent 60%),
+        radial-gradient(90% 70% at 80% 100%,
+            color-mix(in srgb, var(--color-accent) 16%, transparent) 0%,
+            transparent 65%);
+    pointer-events: none;
+}
+
+.hero-stage > .hero-container {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Scroll reveal ────────────────────────────────────────────────────────*/
+[data-reveal] {
+    opacity: 0;
+    transform: translateY(26px);
+    transition:
+        opacity .7s cubic-bezier(.22, 1, .36, 1),
+        transform .7s cubic-bezier(.22, 1, .36, 1);
+    will-change: opacity, transform;
+}
+
+[data-reveal].is-revealed {
+    opacity: 1;
+    transform: none;
+}
+
+/* Anchor targets must clear the sticky navbar when jumped to. */
+.portfolio section { scroll-margin-top: 80px; }
+
+/* ── Navbar ───────────────────────────────────────────────────────────────*/
+.navbar {
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.nav-links a {
+    position: relative;
+    transition: color .25s ease;
+}
+
+/* Underline grows from the centre on hover. */
+.nav-links a::after {
+    content: "";
+    position: absolute;
+    left: 50%; bottom: -4px;
+    width: 0; height: 2px;
+    border-radius: 2px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+    transition: width .3s cubic-bezier(.22, 1, .36, 1);
+}
+
+.nav-links a:hover { color: var(--color-accent); }
+.nav-links a:hover::after { width: 100%; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────*/
+.hero-actions .btn-primary,
+.hero-actions .btn-outline {
+    position: relative;
+    overflow: hidden;
+    transition:
+        transform .3s cubic-bezier(.22, 1, .36, 1),
+        box-shadow .3s ease,
+        border-color .3s ease,
+        color .3s ease;
+}
+
+.hero-actions .btn-primary:hover,
+.hero-actions .btn-outline:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+/* Sheen sweep across the button face. */
+.hero-actions .btn-primary::after,
+.hero-actions .btn-outline::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%) skewX(-18deg);
+    background: linear-gradient(90deg,
+        transparent,
+        color-mix(in srgb, #fff 28%, transparent),
+        transparent);
+    transition: transform .7s cubic-bezier(.22, 1, .36, 1);
+}
+
+.hero-actions .btn-primary:hover::after,
+.hero-actions .btn-outline:hover::after { transform: translateX(120%) skewX(-18deg); }
+
+.hero-actions .btn-outline:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+/* ── Project cards: pointer tilt + cursor-tracking glow ───────────────────*/
+.project-card {
+    position: relative;
+    isolation: isolate;
+    transform-style: preserve-3d;
+    transition:
+        transform .45s cubic-bezier(.22, 1, .36, 1),
+        box-shadow .45s ease,
+        border-color .45s ease;
+    border: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+    will-change: transform;
+}
+
+.project-card.is-tilting {
+    transform:
+        perspective(900px)
+        rotateX(var(--tilt-x, 0deg))
+        rotateY(var(--tilt-y, 0deg))
+        translateZ(12px);
+    box-shadow: 0 22px 48px rgba(0, 0, 0, .45);
+    border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+
+/* Light source that follows the cursor across the card. */
+.project-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity .4s ease;
+    background: radial-gradient(
+        420px circle at var(--mx, 50%) var(--my, 50%),
+        color-mix(in srgb, var(--color-primary) 26%, transparent),
+        transparent 55%);
+}
+
+.project-card.is-tilting::before { opacity: 1; }
+
+.project-card .project-img { transition: transform .6s cubic-bezier(.22, 1, .36, 1); }
+.project-card.is-tilting .project-img { transform: scale(1.05); }
+
+.project-link {
+    position: relative;
+    transition: transform .25s ease, color .25s ease;
+    display: inline-block;
+}
+
+.project-link:hover { transform: translateX(4px); }
+
+/* ── Tech + skill tags ────────────────────────────────────────────────────*/
+.tech-tag {
+    transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+}
+
+.tech-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.skill-tag {
+    position: relative;
+    overflow: hidden;
+    transition:
+        transform .35s cubic-bezier(.22, 1, .36, 1),
+        color .35s ease,
+        box-shadow .35s ease;
+}
+
+/* Accent floods up from the bottom on hover. */
+.skill-tag::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    transform: translateY(100%);
+    background: var(--color-accent);
+    transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+}
+
+.skill-tag:hover {
+    color: var(--color-bg);
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.skill-tag:hover::before { transform: translateY(0); }
+
+/* ── Section headings ─────────────────────────────────────────────────────*/
+.section-title {
+    position: relative;
+    display: inline-block;
+}
+
+.section-title::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: -10px;
+    width: 100%;
+    height: 3px;
+    border-radius: 3px;
+    transform: scaleX(0);
+    transform-origin: left;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+    transition: transform .8s cubic-bezier(.22, 1, .36, 1) .15s;
+}
+
+[data-reveal].is-revealed .section-title::after,
+.is-revealed > .section-title::after { transform: scaleX(1); }
+
+/* ── Contact links ────────────────────────────────────────────────────────*/
+.contact-link {
+    position: relative;
+    transition: transform .25s ease, text-shadow .25s ease;
+    display: inline-block;
+}
+
+.contact-link:hover {
+    transform: translateY(-2px);
+    text-shadow: 0 0 18px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+
+/* ── Honour the OS setting ────────────────────────────────────────────────*/
+@media (prefers-reduced-motion: reduce) {
+    [data-reveal] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .section-title::after { transform: scaleX(1); transition: none; }
+
+    .fx-progress { transition: none; }
+
+    /* Neutralise the decorative transforms without removing hover feedback. */
+    .project-card,
+    .project-card.is-tilting,
+    .skill-tag:hover,
+    .tech-tag:hover,
+    .contact-link:hover,
+    .project-link:hover,
+    .hero-actions .btn-primary:hover,
+    .hero-actions .btn-outline:hover {
+        transform: none;
+    }
+
+    .hero-actions .btn-primary::after,
+    .hero-actions .btn-outline::after { display: none; }
+}
+
+/* Logo now carries the full hero title, so it needs a ceiling on small screens. */
+.nav-logo {
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

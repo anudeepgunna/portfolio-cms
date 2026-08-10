@@ -5,17 +5,18 @@
         @Section.Title
     </h2>
     <div class="contact-links">
+        @{ var contactIndex = 0; }
         @foreach (var line in Section.Content.Split('\n', StringSplitOptions.TrimEntries))
         {
             @if (line.StartsWith("http"))
             {
-                <a href="@line" target="_blank" class="contact-link" style="color:var(--color-accent)">
+                <a href="@line" target="_blank" class="contact-link" data-reveal data-reveal-delay="@(contactIndex++ * 70)" style="color:var(--color-accent)">
                     @line
                 </a>
             }
             else
             {
-                <p class="contact-item">@line</p>
+                <p class="contact-item" data-reveal data-reveal-delay="@(contactIndex++ * 70)">@line</p>
             }
         }
     </div>

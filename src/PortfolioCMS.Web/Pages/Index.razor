@@ -4,7 +4,9 @@
 @inject PortfolioApiService Api
 @inject PortfolioHubService Hub
 @inject IConfiguration Config
+@inject IJSRuntime JS
 @implements IAsyncDisposable
+@using Microsoft.JSInterop
 
 <PageTitle>@(_hero?.Title ?? "Portfolio")</PageTitle>
 
@@ -43,9 +45,8 @@ else
     <div class="portfolio" style="background:var(--color-bg); color:var(--color-text); font-family:var(--font-body)">
 
         <nav class="navbar">
-            <span class="nav-logo">
-                @(_hero?.Title?.Split(',').FirstOrDefault()?.Trim() ?? "Portfolio")
-            </span>
+            @* Splitting on "," turned the default "Hi, I'm bob" into just "Hi". *@
+            <span class="nav-logo">@(_hero?.Title?.Trim() is { Length: > 0 } t ? t : "Portfolio")</span>
 
             <div class="nav-links">
                 @foreach (var sec in _sections.Where(s => s.IsVisible))
@@ -58,11 +59,16 @@ else
         @foreach (var sec in _sections.Where(s => s.IsVisible).OrderBy(s => s.DisplayOrder))
         {
             <section id="@(sec.Type.ToLower())"
+                     class="@(sec.Type == "Hero" ? "hero-stage" : null)"
+                     data-reveal
                      style="background:@(sec.BackgroundColor); color:@(sec.TextColor)">
 
                 @switch (sec.Type)
                 {
                     case "Hero":
+                        @* Backdrop for the three.js scene. Stays empty and
+                           invisible if WebGL or the CDN is unavailable. *@
+                        <canvas class="fx-canvas" data-fx-hero aria-hidden="true"></canvas>
                         <HeroSection Section="sec" PagePath="@PagePath" />
                         break;
 
@@ -188,10 +194,51 @@ else
         });
     }
 
+    // ── Visual effects ────────────────────────────────────────────────────
+    // Driven from JS because they need the real DOM: WebGL, IntersectionObserver
+    // and pointer geometry have no Blazor equivalent.
+
+    private bool _fxStarted;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_loading || _notFound) return;
+
+        try
+        {
+            if (!_fxStarted)
+            {
+                await JS.InvokeVoidAsync("portfolioFx.init", new
+                {
+                    primary   = _theme?.PrimaryColor,
+                    secondary = _theme?.SecondaryColor,
+                    accent    = _theme?.AccentColor
+                });
+
+                _fxStarted = true;
+            }
+            else
+            {
+                // Content changed underneath us (live update, or a different
+                // user's page) — rebind observers to the new nodes.
+                await JS.InvokeVoidAsync("portfolioFx.refresh");
+            }
+        }
+        catch (JSException)
+        {
+            // The effects module is optional; a failure here must not take
+            // the page down with it.
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         Hub.OnContentUpdated -= HandleContentUpdated;
         Hub.OnThemeUpdated -= HandleThemeUpdated;
+
+        try { await JS.InvokeVoidAsync("portfolioFx.dispose"); }
+        catch (JSException) { }
+        catch (TaskCanceledException) { }
 
         await Hub.DisposeAsync();
     }
