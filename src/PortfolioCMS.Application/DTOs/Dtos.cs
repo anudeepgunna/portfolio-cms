@@ -12,6 +12,17 @@ public record RefreshTokenRequest(string RefreshToken);
 
 // ─── Portfolio ────────────────────────────────────────────────────────────────
 
+/// <summary>One row in the public directory.</summary>
+public record PortfolioSummaryDto(
+    string Username,
+    string Title,
+    string? SubTitle,
+    int ProjectCount,
+    string PrimaryColor,
+    string AccentColor,
+    string BackgroundColor
+);
+
 /// <summary>Everything the public page needs for one user, in a single round trip.</summary>
 public record PublicPortfolioDto(
     string Username,

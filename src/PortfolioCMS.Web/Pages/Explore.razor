@@ -1,0 +1,66 @@
+@page "/explore"
+@inject PortfolioApiService Api
+@inject NavigationManager Nav
+
+<PageTitle>Explore portfolios</PageTitle>
+
+<div class="explore-page">
+    <header class="explore-header">
+        <h1>Explore portfolios</h1>
+        <p>Built by people using this CMS. Every card is a live, shareable page.</p>
+        <a class="btn-primary" href="/register">Create yours</a>
+    </header>
+
+    @if (_loading)
+    {
+        <div class="loading-screen"><div class="loader"></div></div>
+    }
+    else if (_portfolios.Count == 0)
+    {
+        <div class="explore-empty">
+            <p>No portfolios yet — be the first.</p>
+            <a class="btn-primary" href="/register">Get started</a>
+        </div>
+    }
+    else
+    {
+        <div class="explore-grid">
+            @{ var i = 0; }
+            @foreach (var p in _portfolios)
+            {
+                <a class="explore-card" href="/p/@p.Username" data-tilt="6"
+                   data-reveal data-reveal-delay="@(i++ * 60)"
+                   style="--card-bg:@p.BackgroundColor; --card-primary:@p.PrimaryColor; --card-accent:@p.AccentColor">
+
+                    @* Swatch doubles as a preview of that portfolio's theme. *@
+                    <div class="explore-swatch"></div>
+
+                    <div class="explore-body">
+                        <h2>@p.Title</h2>
+                        @if (!string.IsNullOrWhiteSpace(p.SubTitle))
+                        {
+                            <p class="explore-sub">@p.SubTitle</p>
+                        }
+                        <div class="explore-meta">
+                            <span class="explore-handle">/p/@p.Username</span>
+                            <span class="explore-count">
+                                @p.ProjectCount @(p.ProjectCount == 1 ? "project" : "projects")
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<PortfolioSummaryDto> _portfolios = [];
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _portfolios = await Api.GetExploreAsync() ?? [];
+        _loading = false;
+    }
+}

@@ -5,6 +5,7 @@ using PortfolioCMS.Application.DTOs;
 using PortfolioCMS.Application.Features.Projects;
 using PortfolioCMS.Application.Features.Sections;
 using PortfolioCMS.Application.Features.Theme;
+using PortfolioCMS.Domain.Enums;
 
 namespace PortfolioCMS.Application.Features.Portfolios;
 
@@ -79,5 +80,43 @@ public sealed class GetPublicPortfolioHandler
             theme is null ? null : GetThemeHandler.MapToDto(theme),
             sections.Select(GetAllSectionsHandler.MapToDto).ToList(),
             projects.Select(GetAllProjectsHandler.MapToDto).ToList());
+    }
+}
+
+// ─── Public directory ─────────────────────────────────────────────────────────
+// Lets visitors discover portfolios instead of needing to be handed a link,
+// which is what makes the site read as a product rather than one person's page.
+
+public record ExploreQuery(int Limit = 60) : IRequest<List<PortfolioSummaryDto>>;
+
+public sealed class ExploreHandler : IRequestHandler<ExploreQuery, List<PortfolioSummaryDto>>
+{
+    private readonly IAppDbContext _db;
+    public ExploreHandler(IAppDbContext db) => _db = db;
+
+    public async Task<List<PortfolioSummaryDto>> Handle(ExploreQuery request, CancellationToken ct)
+    {
+        var take = Math.Clamp(request.Limit, 1, 200);
+
+        // Projected in one query rather than loading users and fanning out per
+        // row; the directory grows with every signup.
+        return await _db.Users
+            .OrderByDescending(u => u.Id)
+            .Take(take)
+            .Select(u => new PortfolioSummaryDto(
+                u.Username,
+                _db.Sections
+                    .Where(s => s.OwnerId == u.Id && s.Type == SectionType.Hero)
+                    .Select(s => s.Title)
+                    .FirstOrDefault() ?? u.Username,
+                _db.Sections
+                    .Where(s => s.OwnerId == u.Id && s.Type == SectionType.Hero)
+                    .Select(s => s.SubTitle)
+                    .FirstOrDefault(),
+                _db.Projects.Count(p => p.OwnerId == u.Id && p.IsVisible),
+                _db.Themes.Where(t => t.OwnerId == u.Id).Select(t => t.PrimaryColor).FirstOrDefault() ?? "#6366f1",
+                _db.Themes.Where(t => t.OwnerId == u.Id).Select(t => t.AccentColor).FirstOrDefault() ?? "#06b6d4",
+                _db.Themes.Where(t => t.OwnerId == u.Id).Select(t => t.BackgroundColor).FirstOrDefault() ?? "#0f172a"))
+            .ToListAsync(ct);
     }
 }

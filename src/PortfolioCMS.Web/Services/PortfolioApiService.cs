@@ -30,6 +30,9 @@ public record ThemeDto(int Id, string PrimaryColor, string SecondaryColor, strin
 
 public record AuthResponse(string AccessToken, string RefreshToken, string Username, string Role);
 
+public record PortfolioSummaryDto(string Username, string Title, string? SubTitle,
+    int ProjectCount, string PrimaryColor, string AccentColor, string BackgroundColor);
+
 /// <summary>Theme + sections + projects for one user, fetched in a single call.</summary>
 public record PublicPortfolioDto(string Username, ThemeDto? Theme,
     List<SectionDto> Sections, List<ProjectDto> Projects);
@@ -176,6 +179,15 @@ public class PortfolioApiService
         var resp = await _http.GetAsync(url);
         return resp.IsSuccessStatusCode
             ? await resp.Content.ReadFromJsonAsync<PublicPortfolioDto>()
+            : null;
+    }
+
+    /// <summary>Public directory of portfolios.</summary>
+    public async Task<List<PortfolioSummaryDto>?> GetExploreAsync(int limit = 60)
+    {
+        var resp = await _http.GetAsync($"/api/explore?limit={limit}");
+        return resp.IsSuccessStatusCode
+            ? await resp.Content.ReadFromJsonAsync<List<PortfolioSummaryDto>>()
             : null;
     }
 

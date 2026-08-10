@@ -137,6 +137,11 @@ portfolios.MapGet("/{username}", async (string username, IMediator m) =>
     return result is null ? Results.NotFound() : Results.Ok(result);
 }).AllowAnonymous();
 
+// Public directory of portfolios.
+app.MapGet("/api/explore", async (IMediator m, int limit = 60) =>
+    Results.Ok(await m.Send(new ExploreQuery(limit))))
+    .AllowAnonymous().WithTags("Portfolios");
+
 // ── The signed-in user's own portfolio (includes hidden items) ────────────────
 
 app.MapGet("/api/me/portfolio", async (IMediator m, ICurrentUserService me) =>

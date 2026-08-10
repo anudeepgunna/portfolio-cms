@@ -35,7 +35,7 @@ public sealed class RegisterHandler : IRequestHandler<RegisterCommand, AuthRespo
     // Route segments that must never be captured by a username, or the public
     // page would shadow a real application route.
     private static readonly HashSet<string> Reserved = new(StringComparer.OrdinalIgnoreCase)
-    { "admin", "api", "login", "register", "p", "health", "hubs", "swagger" };
+    { "admin", "api", "login", "register", "p", "health", "hubs", "swagger", "explore", "about", "settings" };
 
     private readonly IAppDbContext _db;
     private readonly ITokenService _tokens;

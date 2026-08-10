@@ -1,7 +1,9 @@
 @page "/admin"
 @inject PortfolioApiService Api
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.JSInterop
 @using PortfolioCMS.Web.Components.Admin
 @using PortfolioCMS.Web.Components.Public
 
@@ -25,7 +27,11 @@
         <!-- The user's public link, so sharing never requires guessing the URL. -->
         <div class="sidebar-share">
             <small>Your public portfolio</small>
-            <a href="@PublicUrl" target="_blank" rel="noopener">@PublicPath</a>
+            <div class="share-row">
+                <a href="@PublicPath" target="_blank" rel="noopener">@PublicPath</a>
+                <button class="btn-copy @(_copied ? "is-copied" : "")" @onclick="CopyLinkAsync"
+                        title="Copy the full link">@(_copied ? "Copied" : "Copy")</button>
+            </div>
         </div>
         <nav class="sidebar-nav">
             <button class="@NavClass("sections")" @onclick='() => _tab = "sections"'>Sections</button>
@@ -91,4 +97,26 @@
     private string PublicPath => $"/p/{Api.Auth.Username}";
 
     private string PublicUrl => $"{Nav.BaseUri.TrimEnd('/')}{PublicPath}";
+
+    private bool _copied;
+
+    // Copies the absolute URL — the sidebar shows the short path, but what
+    // someone pastes into a message has to be the full link.
+    private async Task CopyLinkAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", PublicUrl);
+            _copied = true;
+            StateHasChanged();
+
+            await Task.Delay(1800);
+            _copied = false;
+        }
+        catch (JSException)
+        {
+            // Clipboard blocked (insecure context or denied permission) — the
+            // link stays visible and selectable next to the button.
+        }
+    }
 }

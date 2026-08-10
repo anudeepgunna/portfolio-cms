@@ -10,6 +10,19 @@
          the current path and 404 on nested routes like /admin/login. -->
     <base href="/" />
 
+    <!-- Baseline social card. /p/* requests are rewritten at the edge with the
+         portfolio owner's own name and intro (netlify/edge-functions). -->
+    <meta name="description" content="Build a portfolio site with a live editor, your own link, and share it anywhere." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FolioBay" />
+    <meta property="og:title" content="FolioBay — build your portfolio in minutes" />
+    <meta property="og:description" content="Live editor, your own link, share it anywhere." />
+    <meta property="og:image" content="https://foliobay.netlify.app/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://foliobay.netlify.app/og-default.png" />
+
     <!-- Google Fonts — Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

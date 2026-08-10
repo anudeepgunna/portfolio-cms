@@ -1,5 +1,7 @@
 [build]
   publish = "netlify_build/wwwroot"
+  # Social preview cards for /p/* — see netlify/edge-functions/portfolio-meta.ts
+  edge_functions = "netlify/edge-functions"
   # Netlify's build image has no .NET SDK, so install it, publish the Blazor
   # WebAssembly frontend, and point it at the Render API via API_BASE_URL
   # (set under Site settings > Environment variables).
